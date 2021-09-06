@@ -784,7 +784,8 @@ def StiffMat2D(L,A,n,q):
             
 def StiffMat3D(L,A,n,q):
     G=grad3D(L)
-    l=len(indexes3D(2*n-2))
+    IZ=indexes3D(2*n-2)
+    l=len(IZ)
     H=np.zeros((l,3,3))
     for b in range(l):
         for i in range(3):
@@ -828,7 +829,7 @@ def StiffMat3D(L,A,n,q):
                     Z=tuple(sumVect(a, b))
                     k=Ind.index(u)
                     o=Ind.index(v)
-                    z=Ind.index(Z)
+                    z=IZ.index(Z)
                     S[k][o]+=w*s[z][i][j]
     return S
     
