@@ -518,8 +518,8 @@ def cst_StiffMat_2D(L,n,A):
     s=np.zeros((3,3))
     for i in range(3):
         for j in range(3):
-            w=np.dot(A,G[j])
-            o=np.vdot(G[i],w)
+            w=np.dot(A,G[i])
+            o=np.vdot(G[j],w)
             s[i][j]+=n*n*o
     w=(n+2)*(n+1)//2
     S=np.zeros((w,w))
@@ -549,8 +549,8 @@ def cst_StiffMat_3D(L,n,A):
     s=np.zeros((4,4))
     for i in range(4):
         for j in range(4):
-            w=np.dot(A,G[j])
-            o=np.vdot(G[i],w)
+            w=np.dot(A,G[i])
+            o=np.vdot(G[j],w)
             s[i][j]+=n*n*o
     w=((n+1)*(n+2)*(n+3) )//6
     Ind=indexes3D(n)
@@ -756,8 +756,8 @@ def StiffMat2D(L,A,n,q):
     for b in range(l):
         for i in range(3):
             for j in range(3):
-                w=np.dot(H[b],G[j])
-                s[b][i][j]+=np.vdot(G[i],w)
+                w=np.dot(H[b],G[i])
+                s[b][i][j]+=np.vdot(G[j],w)
                 
     E=indexes2D(n-1)
     t=len(E)
@@ -781,5 +781,54 @@ def StiffMat2D(L,A,n,q):
                     z=int(positionIndex2D(Z))
                     S[k][f]+=w*s[z][i][j]
     return S
-                
+            
+def StiffMat3D(L,A,n,q):
+    G=grad3D(L)
+    l=len(indexes3D(2*n-2))
+    H=np.zeros((l,3,3))
+    for b in range(l):
+        for i in range(3):
+            for j in range(3):
+                H[b][i][j]=Moment3D(L, lambda x,y,z: A(x,y,z)[i][j], 2*n-2, q)[b]
+
+    s=np.zeros((l,4,4))
+    for b in range(l):
+        for i in range(3):
+            for j in range(3):
+                w=np.dot(H[b],G[j])
+                s[b][i][j]+=np.vdot(G[i],w)
+    
+    q=((n+1)*(n+2)*(n+3) )//6
+    S=np.zeros((q,q))
+    e=np.array([(1,0,0,0),(0,1,0,0),(0,0,1,0),(0,0,0,1)])
+    In=indexes3D(n-1)
+    Ind=indexes3D(n)
+    y=len(In)
+    P=Pascal(2*n+1) 
+    for i in range(y):
+        for j in range(y):
+            a=In[i]
+            a1=a[0]
+            a2=a[1]
+            a3=a[2]
+            a4=a[3]
+            
+            b=In[j]
+            b1=b[0]
+            b2=b[1]
+            b3=b[2]
+            b4=b[3]
+            
+            w=P[a1+b1][a1]*n*n/P[2*n-2][n-1]
+            w*=P[a2+b2][a2]*P[a3+b3][a3]*P[a4+b4][a4]
+            for i in range(4):
+                for j in range(4):
+                    u=tuple(sumVect(a, e[i]))
+                    v=tuple(sumVect(b, e[j]))
+                    Z=tuple(sumVect(a, b))
+                    k=Ind.index(u)
+                    o=Ind.index(v)
+                    z=Ind.index(Z)
+                    S[k][o]+=w*s[z][i][j]
+    return S
     
