@@ -729,17 +729,57 @@ def StiffMat1D(a,b,f,n,q):
             for j in range(2):
                 M[b][i][j]=v[i]*H[b]*v[j]
     P=Pascal(2*n-2)
+    S=np.zeros((n+1,n+1))
     for a1 in range(n):
         for a2 in range(n):
             w=n*n*P[a1+a2][a1]
             w*=P[n-1-a1+n-1-a2][n-1-a1]
             w/=P[2*n-2][n-1]
-    S=np.zeros((n+1,n+1))
-    for i in range(n):
-        for j in range(n):
             k=w
-            S[i+1][j+1]+=k*M[i+j][0][0]
-            S[i+1][j]+=k*M[i+j][0][1]
-            S[i][j+1]+=k*M[i+j][1][0]
-            S[i][j]+=k*M[i+j][1][1]
+            S[a1+1][a2+1]+=k*M[a1+a2][0][0]
+            S[a1+1][a2]+=k*M[a1+a2][0][1]
+            S[a1][a2+1]+=k*M[a1+a2][1][0]
+            S[a1][a2]+=k*M[a1+a2][1][1]
     return S        
+
+def StiffMat2D(L,A,n,q):
+    G=grad2D(L)
+    In=indexes2D(2*n-2)
+    l=len(In)
+    H=np.zeros((l,2,2))
+    for b in range(l):
+        for i in range(2):
+            for j in range(2):
+                H[b][i][j]=Moment2D(L, lambda x,y: A(x,y)[i][j], 2*n-2, q)[b]
+
+    s=np.zeros((l,3,3))
+    for b in range(l):
+        for i in range(3):
+            for j in range(3):
+                w=np.dot(H[b],G[j])
+                s[b][i][j]+=np.vdot(G[i],w)
+                
+    E=indexes2D(n-1)
+    t=len(E)
+    P=Pascal(2*n)
+    w=(n+2)*(n+1)//2
+    S=np.zeros((w,w))
+    e=np.array([(1,0,0),(0,1,0),(0,0,1)])
+    for i in range(t):
+        for j in range(t):
+            a=E[i]
+            b=E[j]
+            w=n*n*P[a[0]+b[0]][a[0]]/P[2*n-2][n-1]
+            w*=P[a[1]+b[1]][a[1]]*P[a[2]+b[2]][a[2]]
+            for i in range(3):
+                for j in range(3):
+                    u=sumVect(a, e[i])
+                    v=sumVect(b, e[j])
+                    Z=sumVect(a, b)
+                    k=int(positionIndex2D(u))
+                    f=int(positionIndex2D(v))
+                    z=int(positionIndex2D(Z))
+                    S[k][f]+=w*s[z][i][j]
+    return S
+                
+    
