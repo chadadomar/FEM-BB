@@ -617,9 +617,9 @@ def cst_ConvMat_2D(L,n,b):
             b=H1[j]
             w=P[a[0]+b[0]][a[0]]*P[a[1]+b[1]][a[1]]*P[a[2]+b[2]][a[2]]
             for k in range(3):
-                alpha=tuple(sumVect(a, e[i]))
+                alpha=tuple(sumVect(a, e[k]))
                 i2=H1.index(alpha)
-                V[i2][j]+=w*s[i]
+                V[i2][j]+=w*s[k]
     return V
                       
 ## 3D
@@ -645,9 +645,9 @@ def cst_ConvMat_3D(L,n,b):
             b=H1[j]
             w=P[a[0]+b[0]][a[0]]*P[a[1]+b[1]][a[1]]*P[a[2]+b[2]][a[2]]*P[a[3]+b[3]][a[3]]
             for k in range(4):
-                alpha=tuple(sumVect(a, e[i]))
+                alpha=tuple(sumVect(a, e[k]))
                 i2=H1.index(alpha)
-                V[i2][j]+=w*s[i]
+                V[i2][j]+=w*s[k]
     return V
     
     
@@ -742,6 +742,8 @@ def StiffMat1D(a,b,f,n,q):
             S[a1][a2]+=k*M[a1+a2][1][1]
     return S        
 
+### 2D
+
 def StiffMat2D(L,A,n,q):
     G=grad2D(L)
     In=indexes2D(2*n-2)
@@ -781,8 +783,11 @@ def StiffMat2D(L,A,n,q):
                     z=int(positionIndex2D(Z))
                     S[k][f]+=w*s[z][i][j]
     return S
-            
+ 
+### 3D
+           
 def StiffMat3D(L,A,n,q):
+    # A is a 3*3 matrix valued function
     G=grad3D(L)
     IZ=indexes3D(2*n-2)
     l=len(IZ)
@@ -832,4 +837,105 @@ def StiffMat3D(L,A,n,q):
                     z=IZ.index(Z)
                     S[k][o]+=w*s[z][i][j]
     return S
+
+## Convectiv matrix
+
+### 1D 
+
+def Conv1D(a,b,f,n,q):
+    v=[1/(a-b),1/(b-a)]
+    P=Pascal(2*n-1)
+    H=np.zeros((2*n,2))
+    for b in range(2*n):
+        for i in range(2):
+            H[b][i]+=v[i]*(Moment1D(a, b, f, n, q)[b])
+            
+    V=np.zeros((n+1,n+1))
+    for i in range(n):
+        for j in range(n+1):
+            w=P[i+j][i]*n/P[2*n-1][n]
+            i2=n-1-i
+            j2=n-j
+            w*=P[i2+j2][i2]
+            V[i+1][j]+=w*H[i+j][0]
+            V[i][j]+=w*H[i+j][1]
+    return V
+
+### 2D
+
+def Conv2D(L,f,n,q):
+    # f is a 2dimensional vector valued function
+    P=Pascal(2*n-1)
+    G=grad2D(L)
+    In=indexes2D(2*n-1)
+    l=len(In)
     
+    M1=np.zeros((l,2))
+    for b in range(l):
+        for j in range(2):
+            M1[b][j]+=Moment2D(L, lambda x,y:f(x,y)[j], 2*n-1, q)[b]
+            
+    M2=np.zeros((l,3))
+    for b in range(l):
+        for j in range(3):
+            M2[b][j]+=np.vdot(G[j],M1[b])
+    
+    H1=indexes2D(n)
+    H2=indexes2D(n-1)
+    h1=len(H1)
+    h2=len(H2)
+    V=np.zeros((h1,h1))
+    e=np.array([(1,0,0),(0,1,0),(0,0,1)])
+    for i in range(h2):
+        for j in range(h1):
+            a=H2[i]
+            b=H1[j]
+            w=P[a[0]+b[0]][a[0]]*n/P[2*n-1][n]
+            w*=P[a[1]+b[1]][a[1]]*P[a[2]+b[2]][a[2]]
+            for k in range(3):
+                alpha=tuple(sumVect(a, e[k]))
+                s=tuple(sumVect(a,b))
+                i2=H1.index(alpha)
+                q=In.index(s)
+                V[i2][j]+=w*M2[q][k]
+    return V
+    
+### 3D 
+
+def Conv3D(L,f,q,n):
+    # f is a 2dimensional vector valued function
+    P=Pascal(2*n-1)
+    G=grad3D(L)
+    In=indexes3D(2*n-1)
+    l=len(In)
+    
+    M1=np.zeros((l,3))
+    for b in range(l):
+        for j in range(3):
+            M1[b][j]+=Moment3D(L, lambda x,y,z:f(x,y,z)[j], 2*n-1, q)[b]
+            
+    M2=np.zeros((l,4))
+    for b in range(l):
+        for j in range(3):
+            M2[b][j]+=np.vdot(G[j],M1[b])
+    
+    H1=indexes3D(n)
+    H2=indexes3D(n-1)
+    h1=len(H1)
+    h2=len(H2)
+    V=np.zeros((h1,h1))
+    e=np.array([(1,0,0,0),(0,1,0,0),(0,0,1,0),(0,0,0,1)])
+    for i in range(h2):
+        for j in range(h1):
+            a=H2[i]
+            b=H1[j]
+            w=P[a[0]+b[0]][a[0]]*n/P[2*n-1][n]
+            w*=P[a[1]+b[1]][a[1]]*P[a[2]+b[2]][a[2]]*P[a[3]+b[3]][a[3]]
+            for k in range(4):
+                alpha=tuple(sumVect(a, e[k]))
+                s=tuple(sumVect(a, b))
+                i2=H1.index(alpha)
+                q=In.index(s)
+                V[i2][j]+=w*M2[q][k]
+    return V
+
