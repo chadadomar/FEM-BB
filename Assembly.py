@@ -16,7 +16,7 @@ def Pascal(n):
             t[i][j]=t[i-1][j-1]+t[i-1][j]
     return t
 
-## matrice of scalar prod of gradient vect
+## matrice of scalar prod of gradient vectors
 def grad1D(L):
     [a,b]=L  # a =< b
     T=abs(b-a)
@@ -274,10 +274,7 @@ def Moment2D(L,f,n,q):
 
 ## 3D Moment
 
-
-
 ### Evaluation of f at q^3 point quadrature
-
 
 def Eval3D(f,q,L):
     [x1,y1,z1,x2,y2,z2,x3,y3,z3,x4,y4,z4]=L
@@ -422,13 +419,13 @@ def Moment3D(L,f,n,q):
     return M
 
 # Constant Data
-#mass matrix with x
-## 1D
+## mass matrix
+### 1D
 
 def CstMassMat1D(n,T):
     # input: 
         ## n polynomial degree
-        ## T simplex area
+        ## T interval lenth
     # Output:
         # Mass matrix M_{i,j}=(Bn,i;Bn,j)
     P=Pascal(2*n)
@@ -515,12 +512,14 @@ def cst_StiffMat_2D(L,n,A):
     T=AirT2D(L)
     M=CstMassMat2D(n-1, T)
     G=grad2D(L)
+    
     s=np.zeros((3,3))
     for i in range(3):
         for j in range(3):
             w=np.dot(A,G[i])
             o=np.vdot(G[j],w)
             s[i][j]+=n*n*o
+            
     w=(n+2)*(n+1)//2
     S=np.zeros((w,w))
     e=np.array([(1,0,0),(0,1,0),(0,0,1)])
@@ -539,12 +538,14 @@ def cst_StiffMat_2D(L,n,A):
                     l=int(positionIndex2D(v))
                     S[k][l]+=y*s[i][j]
     return S
-    
+
+
 ## 3D  
    
 def cst_StiffMat_3D(L,n,A):
     T=AirT3D(L)
     M=CstMassMat3D(n-1, T)
+    
     G=grad3D(L)
     s=np.zeros((4,4))
     for i in range(4):
@@ -552,6 +553,7 @@ def cst_StiffMat_3D(L,n,A):
             w=np.dot(A,G[i])
             o=np.vdot(G[j],w)
             s[i][j]+=n*n*o
+            
     w=((n+1)*(n+2)*(n+3) )//6
     Ind=indexes3D(n)
     S=np.zeros((w,w))
@@ -938,4 +940,3 @@ def Conv3D(L,f,q,n):
                 q=In.index(s)
                 V[i2][j]+=w*M2[q][k]
     return V
-
