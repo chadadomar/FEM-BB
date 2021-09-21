@@ -66,7 +66,7 @@ def sumVect(u,v):
     else:
         w=np.zeros(n)
         for i in range(n):
-            w[i]=u[i]+v[i]
+            w[i]=int(u[i]+v[i])
         return w
 
 def Sub(u,v):
@@ -317,6 +317,7 @@ def A1(n,q):
             M[j][i]=b*a
             a/=((1-x[i])/2)
     return M
+
 def B1(n,q):
     M=np.zeros((n+1,q))
     [x,w]=scipy.special.roots_jacobi(q,2,0)
@@ -339,6 +340,7 @@ def A2(n,q):
             M[j][i]=b*a
             a/=((1-x[i])/2)
     return M
+
 def B2(n,q):
     M=np.zeros((n+1,q))
     [x,w]=scipy.special.roots_jacobi(q,1,0)
@@ -361,6 +363,7 @@ def A3(n,q):
             M[j][i]=b*a
             a/=((1-x[i])/2)
     return M
+
 def B3(n,q):
     M=np.zeros((n+1,q))
     [x,w]=scipy.special.roots_jacobi(q,0,0)
@@ -505,8 +508,6 @@ def cst_StiffMat_1D(L,n,A):
             
 ##2D
 
-def positionIndex2D(b):
-    return b[1]+b[2]*(2*(b[0]+b[1])+b[2]+3)//2
 
 def cst_StiffMat_2D(L,n,A):
     T=AirT2D(L)
@@ -523,6 +524,7 @@ def cst_StiffMat_2D(L,n,A):
     w=(n+2)*(n+1)//2
     S=np.zeros((w,w))
     e=np.array([(1,0,0),(0,1,0),(0,0,1)])
+    Ind=indexes2D(n)
     In=indexes2D(n-1)
     L=len(In)
     for p in range(L):
@@ -532,13 +534,12 @@ def cst_StiffMat_2D(L,n,A):
             b=In[q]
             for i in range(3):
                 for j in range(3):
-                    u=sumVect(a, e[i])
-                    v=sumVect(b, e[j])
-                    k=int(positionIndex2D(u))
-                    l=int(positionIndex2D(v))
+                    u=tuple(sumVect(a, e[i]))
+                    v=tuple(sumVect(b, e[j]))
+                    k=Ind.index(u)
+                    l=Ind.index(v)
                     S[k][l]+=y*s[i][j]
     return S
-
 
 ## 3D  
    
@@ -555,10 +556,10 @@ def cst_StiffMat_3D(L,n,A):
             s[i][j]+=n*n*o
             
     w=((n+1)*(n+2)*(n+3) )//6
-    Ind=indexes3D(n)
     S=np.zeros((w,w))
     e=np.array([(1,0,0,0),(0,1,0,0),(0,0,1,0),(0,0,0,1)])
     In=indexes3D(n-1)
+    Ind=indexes3D(n)
     L=len(In)
     for p in range(L):
         for q in range(L):
@@ -674,7 +675,7 @@ def MassMat1D(a,b,f,n,q):
 def MassMat2D(L,f,n,q):
     H=Moment2D(L,f,2*n,q)
     In=indexes2D(n)
-    l=len(In)
+    l=(n+2)*(n+1)//2
     P=Pascal(2*n+2)
     M=np.zeros((l,l))
     
@@ -748,42 +749,41 @@ def StiffMat1D(a,b,f,n,q):
 
 def StiffMat2D(L,A,n,q):
     G=grad2D(L)
-    In=indexes2D(2*n-2)
-    l=len(In)
+    l=n*(2*n-1)
     H=np.zeros((l,2,2))
     for b in range(l):
         for i in range(2):
             for j in range(2):
-                H[b][i][j]=Moment2D(L, lambda x,y: A(x,y)[i][j], 2*n-2, q)[b]
-
+                H[b][i][j]=Moment2D(L, lambda x,y: A(x,y)[i][j], 2*n-2, 2*n+3)[b]
     s=np.zeros((l,3,3))
     for b in range(l):
         for i in range(3):
             for j in range(3):
                 w=np.dot(H[b],G[i])
                 s[b][i][j]+=np.vdot(G[j],w)
-                
-    E=indexes2D(n-1)
-    t=len(E)
+    In=indexes2D(n)
+    Ind=indexes2D(2*n-2)
     P=Pascal(2*n)
     w=(n+2)*(n+1)//2
     S=np.zeros((w,w))
     e=np.array([(1,0,0),(0,1,0),(0,0,1)])
+    E=indexes2D(n-1)
+    t=n*(n+1)//2
     for i in range(t):
         for j in range(t):
             a=E[i]
             b=E[j]
             w=n*n*P[a[0]+b[0]][a[0]]/P[2*n-2][n-1]
             w*=P[a[1]+b[1]][a[1]]*P[a[2]+b[2]][a[2]]
-            for i in range(3):
-                for j in range(3):
-                    u=sumVect(a, e[i])
-                    v=sumVect(b, e[j])
-                    Z=sumVect(a, b)
-                    k=int(positionIndex2D(u))
-                    f=int(positionIndex2D(v))
-                    z=int(positionIndex2D(Z))
-                    S[k][f]+=w*s[z][i][j]
+            for i2 in range(3):
+                for j2 in range(3):
+                    u=tuple(sumVect(a, e[i2]))
+                    v=tuple(sumVect(b, e[j2]))
+                    Z=tuple(sumVect(a, b))
+                    k=In.index(u)
+                    f=In.index(v)
+                    z=Ind.index(Z)
+                    S[k][f]+=w*s[z][i2][j2]
     return S
  
 ### 3D
@@ -808,6 +808,7 @@ def StiffMat3D(L,A,n,q):
     
     q=((n+1)*(n+2)*(n+3) )//6
     S=np.zeros((q,q))
+    
     e=np.array([(1,0,0,0),(0,1,0,0),(0,0,1,0),(0,0,0,1)])
     In=indexes3D(n-1)
     Ind=indexes3D(n)
@@ -829,15 +830,15 @@ def StiffMat3D(L,A,n,q):
             
             w=P[a1+b1][a1]*n*n/P[2*n-2][n-1]
             w*=P[a2+b2][a2]*P[a3+b3][a3]*P[a4+b4][a4]
-            for i in range(4):
-                for j in range(4):
-                    u=tuple(sumVect(a, e[i]))
-                    v=tuple(sumVect(b, e[j]))
+            for i2 in range(4):
+                for j2 in range(4):
+                    u=tuple(sumVect(a, e[i2]))
+                    v=tuple(sumVect(b, e[j2]))
                     Z=tuple(sumVect(a, b))
                     k=Ind.index(u)
                     o=Ind.index(v)
                     z=IZ.index(Z)
-                    S[k][o]+=w*s[z][i][j]
+                    S[k][o]+=w*s[z][i2][j2]
     return S
 
 ## Convectiv matrix
@@ -940,3 +941,20 @@ def Conv3D(L,f,q,n):
                 q=In.index(s)
                 V[i2][j]+=w*M2[q][k]
     return V
+
+
+# Test:
+    ## equation  -div( grad u)=1
+def A(x,y):
+    return np.eye(2)
+
+S=cst_StiffMat_2D([0,0,1,0,0,1], 2, np.eye(2))
+S2=StiffMat2D([0,0,1,0,0,1], A, 2, 4)
+#B=Moment2D([0,0,1,0,0,1], lambda x,y:1, 2, 4)
+#X=np.linalg.solve(S,B)
+#X2=np.linalg.solve(S2,B)
+print("S \n",np.round_(S,decimals=3))
+print("S2 \n",np.round_(S2,decimals=3))
+print("difference \n",np.round_(S2-S,decimals=3))
+#print("X2 ",X2)
+#print(X)

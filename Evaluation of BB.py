@@ -40,7 +40,7 @@ def deCasteljau2D(lam,C,n):
         return C[0]
        
 # Sum factorisation technique 2D
-## C matrix of the BB form ordered in lexicographiqe
+## C vector of the BB form ordered in lexicographiqe
 ## q: number of Gauss-Jaccobi quadrature point
 
 def Eval(C,n,q):
