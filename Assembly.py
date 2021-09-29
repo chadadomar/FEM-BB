@@ -944,17 +944,36 @@ def Conv3D(L,f,q,n):
 
 
 # Test:
-    ## equation  -div( grad u)=1
+    ## Poisson equation  -div( grad u)=1, u=0 on the boundary
 def A(x,y):
-    return np.eye(2)
+    return np.array([[1,0],[1,0]])
 
-S=cst_StiffMat_2D([0,0,1,0,0,1], 2, np.eye(2))
-S2=StiffMat2D([0,0,1,0,0,1], A, 2, 4)
-#B=Moment2D([0,0,1,0,0,1], lambda x,y:1, 2, 4)
-#X=np.linalg.solve(S,B)
-#X2=np.linalg.solve(S2,B)
-print("S \n",np.round_(S,decimals=3))
-print("S2 \n",np.round_(S2,decimals=3))
-print("difference \n",np.round_(S2-S,decimals=3))
-#print("X2 ",X2)
-#print(X)
+def sol2D(n):
+    K=StiffMat2D([0,0,1,0,0,1], A, n, n+1)
+    #print(K[4][4])
+    B=Moment2D([0,0,1,0,0,1], lambda x,y:1, n, n+1)
+    L=indexes2D(n)
+    w=(n+1)*(n+2)//2
+    i=0
+    s=0
+    C=[]
+    while i<w :
+        #print("i,w ",i,w)
+        p=L[i][0]*L[i][1]*L[i][2]
+        #print("p ",p)
+        if p==0:
+                K=np.delete(K,(i-s),axis=0)
+                K=np.delete(K,(i-s),axis=1)
+                B=np.delete(B,i-s)
+                s+=1
+                i+=1
+        else:
+            C.append(i)
+            i+=1
+    #print('K ',K)
+    #print('B ',B)
+    print(C)
+    X=np.linalg.solve(K,B)
+    print(X)
+    
+

@@ -1,4 +1,4 @@
-import numpy as np
+ import numpy as np
 import scipy.special
 
 
@@ -16,7 +16,7 @@ def deCasteljau1D(t,c):
     return c[0]
 
 ## dimension 2
-### lam: barycentrique cordinate
+### lam: barycentrique cordinate of the point
 ### C vector of the BB form ordered in lexicographiqe
 ### l step index
 
@@ -40,6 +40,7 @@ def deCasteljau2D(lam,C,n):
         return C[0]
        
 # Sum factorisation technique 2D
+# Evaluation at nodes of straud conical quadrature rule: Gauss Jaccobi
 ## C vector of the BB form ordered in lexicographiqe
 ## q: number of Gauss-Jaccobi quadrature point
 
