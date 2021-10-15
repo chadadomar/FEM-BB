@@ -1,5 +1,6 @@
 import numpy as np
 import scipy.special
+import timeit
 
 
 #Auxilary functions
@@ -246,6 +247,7 @@ def Eval2D(f,q,L):
 ### Moment approximation
 
 def Moment2D(L,f,n,q):
+    t0= timeit.default_timer()
     T=AirT2D(L)
     F=Eval2D(f, q, L)
     P=Pascal(n)
@@ -270,6 +272,8 @@ def Moment2D(L,f,n,q):
         for i2 in range(q):
             M[j]+=A2[b1+b2][i2]*B2[b2][i2]*Aux[b1][i2]
         M[j]*=T*P[b1+b2][b2]*P[n][b3]/4
+    t1=timeit.default_timer()-t0
+    print("Time elapsed: ", t1)
     return M
 
 ## 3D Moment
@@ -546,7 +550,6 @@ def cst_StiffMat_2D(L,n,A):
 def cst_StiffMat_3D(L,n,A):
     T=AirT3D(L)
     M=CstMassMat3D(n-1, T)
-    
     G=grad3D(L)
     s=np.zeros((4,4))
     for i in range(4):
@@ -751,10 +754,11 @@ def StiffMat2D(L,A,n,q):
     G=grad2D(L)
     l=n*(2*n-1)
     H=np.zeros((l,2,2))
-    for b in range(l):
-        for i in range(2):
-            for j in range(2):
-                H[b][i][j]=Moment2D(L, lambda x,y: A(x,y)[i][j], 2*n-2, 2*n+3)[b]
+    for i in range(2):
+        for j in range(2):
+            O=Moment2D(L, lambda x,y: A(x,y)[i][j], 2*n-2, 2*n+3)
+            for b in range(l):
+                H[b][i][j]=O[b]
     s=np.zeros((l,3,3))
     for b in range(l):
         for i in range(3):
