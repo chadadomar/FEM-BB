@@ -1,21 +1,27 @@
 import numpy as np
 import scipy.special
 import timeit
+#np.seterr(all='warn')
 
+
+# Polynomial order n is limited at 100
 
 #Auxilary functions
 
 
-##Binomial coeff
-def Pascal(n):
-    t=np.zeros((n+1,n+1))
-    for i in range(n+1):
-        t[i][0]=1
-        t[i][i]=1
-    for i in range(2,n+1):
-        for j in range(1,i):
-            t[i][j]=t[i-1][j-1]+t[i-1][j]
-    return t
+##Binomial coeff, limited at 203
+
+Bin=np.load("Binomial coeff.npy")
+
+
+
+# Storing points and weights of Gauss-Jacobi quadrature rule
+quad0=np.load("jaccobi rule 0.npy",allow_pickle=True)
+quad1=np.load("jaccobi rule 1.npy",allow_pickle=True)
+quad2=np.load("jaccobi rule 2.npy",allow_pickle=True)
+## quad is a dictionnary, keys are quadrature ordre values are weights 
+## and nodes, size of quad is 100
+
 
 ## matrice of scalar prod of gradient vectors
 def grad1D(L):
@@ -138,6 +144,23 @@ def indexes2D(n):
 def indexes3D(n):
     return [(i,j,k, n-(i+j+k)) for i in range(n,-1, -1) for j in range(n-i, -1, -1) for k in range(n-i-j,-1,-1)]
 
+
+def getIndex2D(n,t):
+    #n : number of domain point (also polynomial order)
+    #t : index of the domain point (also polynomial index)
+    (i,j,k)=t
+    return int((n-i)*(n-i+1)//2+n-i-j)
+
+def getIndex3D(n,t):
+    (i,j,k,l)=t
+    if i==n:
+        return 0
+    else:
+        s=n-i
+        return int(0.5*((s-1)*s*(2*s-1)/6+3*(s-1)*s/2+2*s) + getIndex2D(s,(j,k,l)))
+        
+    
+
 # Bernestein-Bézier moment
 
 
@@ -145,8 +168,8 @@ def indexes3D(n):
 ###  Vector D: neded after Gauss_Jaccobi quadrature rule
 
 def D(n,q):
-    [x,w]=scipy.special.roots_jacobi(q,0,0)
-    M=np.zeros((q,n+1))
+    [x,w]=quad0.item()[q]
+    M=np.zeros((q,n+1),dtype="longdouble")
     for i in range(q):
         a=((1-x[i])/2)**n
         b=(1+x[i])/2
@@ -161,9 +184,9 @@ def D(n,q):
 
 def Moment1D(a,b,f,n,q):
     M=D(n,q)
-    [x,w]=scipy.special.roots_jacobi(q,0,0)
+    [x,w]=quad0.item()[q]
     F=np.zeros(n+1)
-    P=Pascal(n)
+    P=Bin
     for j in range(n+1):
         for i in range(q):
             xi=a*((1+x[i])/2)+b*((1-x[i])/2)
@@ -177,8 +200,8 @@ def Moment1D(a,b,f,n,q):
 ### precomputed array 
 
 def D1(n,q):
-    M=np.zeros((n+1,q))
-    [x,w]=scipy.special.roots_jacobi(q,1,0)
+    M=np.zeros((n+1,q),dtype="longdouble")
+    [x,w]=quad1.item()[q]
     for i in range(q):
         a=((1-x[i])/2)**n
         b=np.sqrt(w[i])
@@ -188,8 +211,8 @@ def D1(n,q):
     return M
 
 def P1(n,q):
-    M=np.zeros((n+1,q))
-    [x,w]=scipy.special.roots_jacobi(q,1,0)
+    M=np.zeros((n+1,q),dtype="longdouble")
+    [x,w]=quad1.item()[q]
     for i in range(q):
         a=(1+x[i])/2
         b=np.sqrt(w[i])
@@ -200,8 +223,8 @@ def P1(n,q):
     return M
 
 def D2(n,q):
-    M=np.zeros((n+1,q))
-    [x,w]=scipy.special.roots_jacobi(q,0,0)
+    M=np.zeros((n+1,q),dtype="longdouble")
+    [x,w]=quad0.item()[q]
     for i in range(q):
         a=((1-x[i])/2)**n
         b=np.sqrt(w[i])
@@ -211,8 +234,8 @@ def D2(n,q):
     return M
 
 def P2(n,q):
-    M=np.zeros((n+1,q))
-    [x,w]=scipy.special.roots_jacobi(q,0,0)
+    M=np.zeros((n+1,q),dtype="longdouble")
+    [x,w]=quad0.item()[q]
     for i in range(q):
         a=(1+x[i])/2
         b=np.sqrt(w[i])
@@ -227,8 +250,8 @@ def P2(n,q):
 
 def Eval2D(f,q,L):
     [x1,y1,x2,y2,x3,y3]=L
-    [c1,w]=scipy.special.roots_jacobi(q,1,0)
-    [c2,w]=scipy.special.roots_jacobi(q,0,0)
+    [c1,w]=quad1.item()[q]
+    [c2,w]=quad0.item()[q]
     F=np.zeros((q,q))
     for i1 in range(q):
         for i2 in range(q):
@@ -250,13 +273,13 @@ def Moment2D(L,f,n,q):
     t0= timeit.default_timer()
     T=AirT2D(L)
     F=Eval2D(f, q, L)
-    P=Pascal(n)
+    P=Bin
     A1=D1(n,q)
     A2=D2(n,q)
     B1=P1(n,q)
     B2=P2(n,q)
     In=indexes2D(n)
-    l=len(In)
+    l=(n+2)*(n+1)//2
     Aux=np.zeros((n+1,q))
     
     for b1 in range(n+1):
@@ -264,7 +287,7 @@ def Moment2D(L,f,n,q):
             for i2 in range(q):
                 Aux[b1][i2]+=A1[b1][i1]*B1[b1][i1]*F[i1][i2]
     
-    M=np.zeros(l)
+    M=np.zeros(l,dtype="longdouble")
     for j in range(l):
         b1=In[j][0]
         b2=In[j][1]
@@ -274,7 +297,7 @@ def Moment2D(L,f,n,q):
         M[j]*=T*P[b1+b2][b2]*P[n][b3]/4
     t1=timeit.default_timer()-t0
     print("Time elapsed: ", t1)
-    return M
+    #return M
 
 ## 3D Moment
 
@@ -282,9 +305,9 @@ def Moment2D(L,f,n,q):
 
 def Eval3D(f,q,L):
     [x1,y1,z1,x2,y2,z2,x3,y3,z3,x4,y4,z4]=L
-    [c1,w]=scipy.special.roots_jacobi(q,2,0)
-    [c2,w]=scipy.special.roots_jacobi(q,1,0)
-    [c3,w]=scipy.special.roots_jacobi(q,0,0)
+    [c1,w]=quad2.item()[q]
+    [c2,w]=quad1.item()[q]
+    [c3,w]=quad0.item()[q]
     F=np.zeros((q,q,q))
     for i1 in range(q):
         for i2 in range(q):
@@ -313,7 +336,7 @@ def Eval3D(f,q,L):
 
 def A1(n,q):
     M=np.zeros((n+1,q))
-    [x,w]=scipy.special.roots_jacobi(q,2,0)
+    [x,w]=quad2.item()[q]
     for i in range(q):
         a=((1-x[i])/2)**n
         b=np.sqrt(w[i])
@@ -324,7 +347,7 @@ def A1(n,q):
 
 def B1(n,q):
     M=np.zeros((n+1,q))
-    [x,w]=scipy.special.roots_jacobi(q,2,0)
+    [x,w]=quad2.item()[q]
     for i in range(q):
         a=(1+x[i])/2
         b=np.sqrt(w[i])
@@ -336,7 +359,7 @@ def B1(n,q):
 
 def A2(n,q):
     M=np.zeros((n+1,q))
-    [x,w]=scipy.special.roots_jacobi(q,1,0)
+    [x,w]=quad1.item()[q]
     for i in range(q):
         a=((1-x[i])/2)**n
         b=np.sqrt(w[i])
@@ -347,7 +370,7 @@ def A2(n,q):
 
 def B2(n,q):
     M=np.zeros((n+1,q))
-    [x,w]=scipy.special.roots_jacobi(q,1,0)
+    [x,w]=quad1.item()[q]
     for i in range(q):
         a=(1+x[i])/2
         b=np.sqrt(w[i])
@@ -359,7 +382,7 @@ def B2(n,q):
 
 def A3(n,q):
     M=np.zeros((n+1,q))
-    [x,w]=scipy.special.roots_jacobi(q,0,0)
+    [x,w]=quad0.item()[q]
     for i in range(q):
         a=((1-x[i])/2)**n
         b=np.sqrt(w[i])
@@ -370,7 +393,7 @@ def A3(n,q):
 
 def B3(n,q):
     M=np.zeros((n+1,q))
-    [x,w]=scipy.special.roots_jacobi(q,0,0)
+    [x,w]=quad0.item()[q]
     for i in range(q):
         a=(1+x[i])/2
         b=np.sqrt(w[i])
@@ -382,10 +405,10 @@ def B3(n,q):
 
 
 def Moment3D(L,f,n,q):
-    
+    t0=timeit.default_timer()
     T=AirT3D(L)
     F=Eval3D(f, q, L)
-    P=Pascal(n)
+    P=Bin
     D1=A1(n,q)
     D2=A2(n,q)
     D3=A3(n,q)
@@ -422,7 +445,8 @@ def Moment3D(L,f,n,q):
         for i3 in range(q):
             M[j]+=D3[b1+b2+b3][i3]*P3[b3][i3]*U[b1][b2][i3]
         M[j]*=3*T*P[b1+b2][b2]*P[b1+b2+b3][b3]*P[n][b4]/32
-    
+    t1=timeit.default_timer()-t0
+    #print("time elapsed ",t1)
     return M
 
 # Constant Data
@@ -435,7 +459,7 @@ def CstMassMat1D(n,T):
         ## T interval lenth
     # Output:
         # Mass matrix M_{i,j}=(Bn,i;Bn,j)
-    P=Pascal(2*n)
+    P=Bin
     M=np.zeros((n+1,n+1))
     for a1 in range(n+1):
         for a2 in range(n+1):
@@ -446,10 +470,10 @@ def CstMassMat1D(n,T):
 ## 2D
 
 def CstMassMat2D(n,T):
-    
+    t0=timeit.default_timer()
     In=indexes2D(n)
     l=len(In)
-    P=Pascal(2*n+2)
+    P=Bin
     M=np.zeros((l,l))
     
     for i in range(l):
@@ -464,15 +488,17 @@ def CstMassMat2D(n,T):
             
             M[i][j]+=T*P[a1+b1][a1]/(P[2*n][n]*P[2*n+2][2])
             M[i][j]*=P[a2+b2][a2]*P[a3+b3][a3]
+    t1=timeit.default_timer()-t0
+    #print("time elapsed ",t1)
     return M
 
 ## 3D
 
 def CstMassMat3D(n,T):
-    
+    t0=timeit.default_timer()
     In=indexes3D(n)
     l=len(In)
-    P=Pascal(2*n+3)
+    P=Bin
     M=np.zeros((l,l))
     
     for i in range(l):
@@ -489,6 +515,8 @@ def CstMassMat3D(n,T):
             
             M[i][j]+=T*P[a1+b1][a1]/(P[2*n][n]*P[2*n+3][3])
             M[i][j]*=P[a2+b2][a2]*P[a3+b3][a3]*P[a4+b4][a4]
+    t1=timeit.default_timer()-t0
+    #print("time elapsed ",t1)
     return M
     
     
@@ -511,26 +539,23 @@ def cst_StiffMat_1D(L,n,A):
     return S
             
 ##2D
-
-
+    
 def cst_StiffMat_2D(L,n,A):
+    t0=timeit.default_timer()
     T=AirT2D(L)
     M=CstMassMat2D(n-1, T)
     G=grad2D(L)
-    
     s=np.zeros((3,3))
     for i in range(3):
         for j in range(3):
             w=np.dot(A,G[i])
             o=np.vdot(G[j],w)
             s[i][j]+=n*n*o
-            
     w=(n+2)*(n+1)//2
     S=np.zeros((w,w))
     e=np.array([(1,0,0),(0,1,0),(0,0,1)])
-    Ind=indexes2D(n)
     In=indexes2D(n-1)
-    L=len(In)
+    L=(n+1)*n//2
     for p in range(L):
         for q in range(L):
             y=M[p][q]
@@ -540,14 +565,17 @@ def cst_StiffMat_2D(L,n,A):
                 for j in range(3):
                     u=tuple(sumVect(a, e[i]))
                     v=tuple(sumVect(b, e[j]))
-                    k=Ind.index(u)
-                    l=Ind.index(v)
+                    k=getIndex2D(n, u)
+                    l=getIndex2D(n, v)
                     S[k][l]+=y*s[i][j]
+    t2=timeit.default_timer()-t0
+    #print("time elapsed ",t2)
     return S
 
 ## 3D  
    
 def cst_StiffMat_3D(L,n,A):
+    t0=timeit.default_timer()
     T=AirT3D(L)
     M=CstMassMat3D(n-1, T)
     G=grad3D(L)
@@ -576,13 +604,49 @@ def cst_StiffMat_3D(L,n,A):
                     k=Ind.index(u)
                     l=Ind.index(v)
                     S[k][l]+=y*s[i][j]
+    t2=timeit.default_timer()-t0
+    #print("time elapsed ",t2)
     return S
+
+def cst_StiffMat_3DF(L,n,A):
+    t0=timeit.default_timer()
+    T=AirT3D(L)
+    M=CstMassMat3D(n-1, T)
+    G=grad3D(L)
+    s=np.zeros((4,4))
+    for i in range(4):
+        for j in range(4):
+            w=np.dot(A,G[i])
+            o=np.vdot(G[j],w)
+            s[i][j]+=n*n*o
+            
+    w=((n+1)*(n+2)*(n+3) )//6
+    S=np.zeros((w,w))
+    e=np.array([(1,0,0,0),(0,1,0,0),(0,0,1,0),(0,0,0,1)])
+    In=indexes3D(n-1)
+    L=len(In)
+    for p in range(L):
+        for q in range(L):
+            y=M[p][q]
+            a=In[p]
+            b=In[q]
+            for i in range(4):
+                for j in range(4):
+                    u=tuple(sumVect(a, e[i]))
+                    v=tuple(sumVect(b, e[j]))
+                    k=getIndex3D(n, u)
+                    l=getIndex3D(n, v)
+                    S[k][l]+=y*s[i][j]
+    t2=timeit.default_timer()-t0
+    #print("time elapsed ",t2)
+    return S
+
 
 #Convective matrix
 
 ## 1D
 def cst_ConvMat_1D(L,n,b):
-    P=Pascal(2*n-1)
+    P=Bin
     [u,v]=L
     T=abs(u-v)
     r=0.5*T/P[2*n-1][2]
@@ -603,7 +667,7 @@ def cst_ConvMat_1D(L,n,b):
 ##2D 
 
 def cst_ConvMat_2D(L,n,b):
-    P=Pascal(2*n+1)
+    P=Bin
     T=AirT2D(L)
     G=grad2D(L)
     r=n*T/(P[2*n-1][n]*P[2*n+1][2])
@@ -631,7 +695,7 @@ def cst_ConvMat_2D(L,n,b):
 ## 3D
 
 def cst_ConvMat_3D(L,n,b):
-    P=Pascal(2*n+2)
+    P=Bin
     T=AirT3D(L)
     G=grad3D(L)
     r=n*T/(P[2*n-1][n]*P[2*n+2][3])
@@ -665,7 +729,7 @@ def cst_ConvMat_3D(L,n,b):
 
 def MassMat1D(a,b,f,n,q):
     H=Moment1D(a,b,f,2*n,q)
-    P=Pascal(2*n)
+    P=Bin
     M=np.zeros((n+1,n+1))
     for a1 in range(n+1):
         for b1 in range(n+1):
@@ -679,7 +743,7 @@ def MassMat2D(L,f,n,q):
     H=Moment2D(L,f,2*n,q)
     In=indexes2D(n)
     l=(n+2)*(n+1)//2
-    P=Pascal(2*n+2)
+    P=Bin
     M=np.zeros((l,l))
     
     for i in range(l):
@@ -703,7 +767,7 @@ def MassMat3D(L,f,n,q):
     H=Moment3D(L,f,2*n,q)
     In=indexes3D(n)
     l=len(In)
-    P=Pascal(2*n+3)
+    P=Bin
     M=np.zeros((l,l))
     
     for i in range(l):
@@ -734,7 +798,7 @@ def StiffMat1D(a,b,f,n,q):
         for i in range(2):
             for j in range(2):
                 M[b][i][j]=v[i]*H[b]*v[j]
-    P=Pascal(2*n-2)
+    P=Bin
     S=np.zeros((n+1,n+1))
     for a1 in range(n):
         for a2 in range(n):
@@ -751,12 +815,13 @@ def StiffMat1D(a,b,f,n,q):
 ### 2D
 
 def StiffMat2D(L,A,n,q):
+    t0=timeit.default_timer()
     G=grad2D(L)
     l=n*(2*n-1)
     H=np.zeros((l,2,2))
     for i in range(2):
         for j in range(2):
-            O=Moment2D(L, lambda x,y: A(x,y)[i][j], 2*n-2, 2*n+3)
+            O=Moment2D(L, lambda x,y: A(x,y)[i][j], 2*n-2, 2*n-1)
             for b in range(l):
                 H[b][i][j]=O[b]
     s=np.zeros((l,3,3))
@@ -767,12 +832,14 @@ def StiffMat2D(L,A,n,q):
                 s[b][i][j]+=np.vdot(G[j],w)
     In=indexes2D(n)
     Ind=indexes2D(2*n-2)
-    P=Pascal(2*n)
+    P=Bin
     w=(n+2)*(n+1)//2
     S=np.zeros((w,w))
     e=np.array([(1,0,0),(0,1,0),(0,0,1)])
     E=indexes2D(n-1)
     t=n*(n+1)//2
+    t1=timeit.default_timer()-t0
+    print("consumed time befor the loop ",t1)
     for i in range(t):
         for j in range(t):
             a=E[i]
@@ -788,6 +855,8 @@ def StiffMat2D(L,A,n,q):
                     f=In.index(v)
                     z=Ind.index(Z)
                     S[k][f]+=w*s[z][i2][j2]
+    t2= timeit.default_timer()-t1
+    print("time elapsed evaluating the moment is ",t2)
     return S
  
 ### 3D
@@ -817,7 +886,7 @@ def StiffMat3D(L,A,n,q):
     In=indexes3D(n-1)
     Ind=indexes3D(n)
     y=len(In)
-    P=Pascal(2*n+1) 
+    P=Bin
     for i in range(y):
         for j in range(y):
             a=In[i]
@@ -851,7 +920,7 @@ def StiffMat3D(L,A,n,q):
 
 def Conv1D(a,b,f,n,q):
     v=[1/(a-b),1/(b-a)]
-    P=Pascal(2*n-1)
+    P=Bin
     H=np.zeros((2*n,2))
     for b in range(2*n):
         for i in range(2):
@@ -872,7 +941,7 @@ def Conv1D(a,b,f,n,q):
 
 def Conv2D(L,f,n,q):
     # f is a 2dimensional vector valued function
-    P=Pascal(2*n-1)
+    P=Bin
     G=grad2D(L)
     In=indexes2D(2*n-1)
     l=len(In)
@@ -911,7 +980,7 @@ def Conv2D(L,f,n,q):
 
 def Conv3D(L,f,q,n):
     # f is a 2dimensional vector valued function
-    P=Pascal(2*n-1)
+    P=Bin
     G=grad3D(L)
     In=indexes3D(2*n-1)
     l=len(In)
@@ -953,6 +1022,7 @@ def A(x,y):
     return np.array([[1,0],[1,0]])
 
 def sol2D(n):
+    
     K=StiffMat2D([0,0,1,0,0,1], A, n, n+1)
     #print(K[4][4])
     B=Moment2D([0,0,1,0,0,1], lambda x,y:1, n, n+1)

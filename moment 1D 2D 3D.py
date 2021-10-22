@@ -2,7 +2,9 @@ import numpy as np
 import scipy.special
 
 # Bernestein-Bézier moment
-
+quads=dict()
+for q in range(1,20):
+    quads[q]=scipy.special.roots_jacobi(q,0,0)
 
 
 
@@ -29,7 +31,7 @@ def Pascal(n):
 ###  Vector D: neded after Gauss_Jaccobi quadrature rule
 
 def D(n,q):
-    [x,w]=scipy.special.roots_jacobi(q,0,0)
+    [x,w]=quads[q]
     M=np.zeros((q,n+1))
     for i in range(q):
         a=((1-x[i])/2)**n
