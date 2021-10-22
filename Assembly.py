@@ -152,6 +152,8 @@ def getIndex2D(n,t):
     return int((n-i)*(n-i+1)//2+n-i-j)
 
 def getIndex3D(n,t):
+    #n : number of domain point (also polynomial order)
+    #t : index of the domain point (also polynomial index)
     (i,j,k,l)=t
     if i==n:
         return 0
@@ -169,7 +171,7 @@ def getIndex3D(n,t):
 
 def D(n,q):
     [x,w]=quad0.item()[q]
-    M=np.zeros((q,n+1),dtype="longdouble")
+    M=np.zeros((q,n+1))
     for i in range(q):
         a=((1-x[i])/2)**n
         b=(1+x[i])/2
@@ -200,7 +202,7 @@ def Moment1D(a,b,f,n,q):
 ### precomputed array 
 
 def D1(n,q):
-    M=np.zeros((n+1,q),dtype="longdouble")
+    M=np.zeros((n+1,q))
     [x,w]=quad1.item()[q]
     for i in range(q):
         a=((1-x[i])/2)**n
@@ -211,7 +213,7 @@ def D1(n,q):
     return M
 
 def P1(n,q):
-    M=np.zeros((n+1,q),dtype="longdouble")
+    M=np.zeros((n+1,q))
     [x,w]=quad1.item()[q]
     for i in range(q):
         a=(1+x[i])/2
@@ -223,7 +225,7 @@ def P1(n,q):
     return M
 
 def D2(n,q):
-    M=np.zeros((n+1,q),dtype="longdouble")
+    M=np.zeros((n+1,q))
     [x,w]=quad0.item()[q]
     for i in range(q):
         a=((1-x[i])/2)**n
@@ -234,7 +236,7 @@ def D2(n,q):
     return M
 
 def P2(n,q):
-    M=np.zeros((n+1,q),dtype="longdouble")
+    M=np.zeros((n+1,q))
     [x,w]=quad0.item()[q]
     for i in range(q):
         a=(1+x[i])/2
@@ -287,7 +289,7 @@ def Moment2D(L,f,n,q):
             for i2 in range(q):
                 Aux[b1][i2]+=A1[b1][i1]*B1[b1][i1]*F[i1][i2]
     
-    M=np.zeros(l,dtype="longdouble")
+    M=np.zeros(l)
     for j in range(l):
         b1=In[j][0]
         b2=In[j][1]
@@ -296,8 +298,8 @@ def Moment2D(L,f,n,q):
             M[j]+=A2[b1+b2][i2]*B2[b2][i2]*Aux[b1][i2]
         M[j]*=T*P[b1+b2][b2]*P[n][b3]/4
     t1=timeit.default_timer()-t0
-    print("Time elapsed: ", t1)
-    #return M
+    #print("Time elapsed: ", t1)
+    return M
 
 ## 3D Moment
 
@@ -573,42 +575,8 @@ def cst_StiffMat_2D(L,n,A):
     return S
 
 ## 3D  
-   
-def cst_StiffMat_3D(L,n,A):
-    t0=timeit.default_timer()
-    T=AirT3D(L)
-    M=CstMassMat3D(n-1, T)
-    G=grad3D(L)
-    s=np.zeros((4,4))
-    for i in range(4):
-        for j in range(4):
-            w=np.dot(A,G[i])
-            o=np.vdot(G[j],w)
-            s[i][j]+=n*n*o
-            
-    w=((n+1)*(n+2)*(n+3) )//6
-    S=np.zeros((w,w))
-    e=np.array([(1,0,0,0),(0,1,0,0),(0,0,1,0),(0,0,0,1)])
-    In=indexes3D(n-1)
-    Ind=indexes3D(n)
-    L=len(In)
-    for p in range(L):
-        for q in range(L):
-            y=M[p][q]
-            a=In[p]
-            b=In[q]
-            for i in range(4):
-                for j in range(4):
-                    u=tuple(sumVect(a, e[i]))
-                    v=tuple(sumVect(b, e[j]))
-                    k=Ind.index(u)
-                    l=Ind.index(v)
-                    S[k][l]+=y*s[i][j]
-    t2=timeit.default_timer()-t0
-    #print("time elapsed ",t2)
-    return S
 
-def cst_StiffMat_3DF(L,n,A):
+def cst_StiffMat_3D(L,n,A):
     t0=timeit.default_timer()
     T=AirT3D(L)
     M=CstMassMat3D(n-1, T)
@@ -839,7 +807,7 @@ def StiffMat2D(L,A,n,q):
     E=indexes2D(n-1)
     t=n*(n+1)//2
     t1=timeit.default_timer()-t0
-    print("consumed time befor the loop ",t1)
+    #print("consumed time befor the loop ",t1)
     for i in range(t):
         for j in range(t):
             a=E[i]
@@ -856,7 +824,7 @@ def StiffMat2D(L,A,n,q):
                     z=Ind.index(Z)
                     S[k][f]+=w*s[z][i2][j2]
     t2= timeit.default_timer()-t1
-    print("time elapsed evaluating the moment is ",t2)
+    #print("time elapsed evaluating the moment is ",t2)
     return S
  
 ### 3D
@@ -1022,7 +990,7 @@ def A(x,y):
     return np.array([[1,0],[1,0]])
 
 def sol2D(n):
-    
+    t0=timeit.default_timer()
     K=StiffMat2D([0,0,1,0,0,1], A, n, n+1)
     #print(K[4][4])
     B=Moment2D([0,0,1,0,0,1], lambda x,y:1, n, n+1)
@@ -1047,7 +1015,9 @@ def sol2D(n):
     #print('K ',K)
     #print('B ',B)
     print(C)
-    X=np.linalg.solve(K,B)
-    print(X)
+    X=np.array(np.linalg.solve(K,B))
+    print(X[36])
+    t1=timeit.default_timer()-t0
+    print("time elapsed ",t1)
     
 
