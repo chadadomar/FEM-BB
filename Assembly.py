@@ -1,6 +1,8 @@
 import numpy as np
 import scipy.special
 import timeit
+from mpl_toolkits import mplot3d
+import matplotlib.pyplot as plt
 #np.seterr(all='warn')
 
 
@@ -169,28 +171,17 @@ def getIndex3D(n,t):
 ## One dimentional setting
 ###  Vector D: neded after Gauss_Jaccobi quadrature rule
 
-def D(n,q):
-    [x,w]=quad0.item()[q]
-    M=np.zeros((q,n+1))
-    for i in range(q):
-        a=((1-x[i])/2)**n
-        b=(1+x[i])/2
-        t=1.0
-        for j in range(n+1):
-            M[i][j]=w[i]*a*t
-            a/=((1-x[i])/2)
-            t*=b
-    return M
+D=np.load("Precomp D.npy",allow_pickle=True)
 
 ### Moment approximation
 
-def Moment1D(a,b,f,n,q):
-    M=D(n,q)
-    [x,w]=quad0.item()[q]
+def Moment1D(a,b,f,n):
+    M=D.item()[n]
+    [x,w]=quad0.item()[n+1]
     F=np.zeros(n+1)
     P=Bin
     for j in range(n+1):
-        for i in range(q):
+        for i in range(n+1):
             xi=a*((1+x[i])/2)+b*((1-x[i])/2)
             F[j]+=M[i][j]*f(xi)
         F[j]*=np.abs(b-a)*P[n][j]/2
@@ -200,52 +191,13 @@ def Moment1D(a,b,f,n,q):
 ## Tow dimensional sitting
 
 ### precomputed array 
+D1=np.load("Precomp D1.npy",allow_pickle=True)
 
-def D1(n,q):
-    M=np.zeros((n+1,q))
-    [x,w]=quad1.item()[q]
-    for i in range(q):
-        a=((1-x[i])/2)**n
-        b=np.sqrt(w[i])
-        for j in range(n+1):
-            M[j][i]=b*a
-            a/=((1-x[i])/2)
-    return M
+P1=np.load("Precomp P1.npy",allow_pickle=True)
 
-def P1(n,q):
-    M=np.zeros((n+1,q))
-    [x,w]=quad1.item()[q]
-    for i in range(q):
-        a=(1+x[i])/2
-        b=np.sqrt(w[i])
-        t=1
-        for j in range(n+1):
-            M[j][i]=b*t
-            t*=a
-    return M
+D2=np.load("Precomp D2.npy",allow_pickle=True)
 
-def D2(n,q):
-    M=np.zeros((n+1,q))
-    [x,w]=quad0.item()[q]
-    for i in range(q):
-        a=((1-x[i])/2)**n
-        b=np.sqrt(w[i])
-        for j in range(n+1):
-            M[j][i]=b*a
-            a/=((1-x[i])/2)
-    return M
-
-def P2(n,q):
-    M=np.zeros((n+1,q))
-    [x,w]=quad0.item()[q]
-    for i in range(q):
-        a=(1+x[i])/2
-        b=np.sqrt(w[i])
-        t=1
-        for j in range(n+1):
-            M[j][i]=b*t
-            t*=a
-    return M
+P2=np.load("Precomp P2.npy",allow_pickle=True)
 
 
 ### Evaluation of f at q² point quadrature
@@ -271,22 +223,22 @@ def Eval2D(f,q,L):
     
 ### Moment approximation
 
-def Moment2D(L,f,n,q):
+def Moment2D(L,f,n):
     t0= timeit.default_timer()
     T=AirT2D(L)
-    F=Eval2D(f, q, L)
+    F=Eval2D(f, n+1, L)
     P=Bin
-    A1=D1(n,q)
-    A2=D2(n,q)
-    B1=P1(n,q)
-    B2=P2(n,q)
+    A1=D1.item()[n]
+    A2=D2.item()[n]
+    B1=P1.item()[n]
+    B2=P2.item()[n]
     In=indexes2D(n)
     l=(n+2)*(n+1)//2
-    Aux=np.zeros((n+1,q))
+    Aux=np.zeros((n+1,n+1))
     
     for b1 in range(n+1):
-        for i1 in range(q):
-            for i2 in range(q):
+        for i1 in range(n+1):
+            for i2 in range(n+1):
                 Aux[b1][i2]+=A1[b1][i1]*B1[b1][i1]*F[i1][i2]
     
     M=np.zeros(l)
@@ -294,7 +246,7 @@ def Moment2D(L,f,n,q):
         b1=In[j][0]
         b2=In[j][1]
         b3=In[j][2]
-        for i2 in range(q):
+        for i2 in range(n+1):
             M[j]+=A2[b1+b2][i2]*B2[b2][i2]*Aux[b1][i2]
         M[j]*=T*P[b1+b2][b2]*P[n][b3]/4
     t1=timeit.default_timer()-t0
@@ -335,107 +287,41 @@ def Eval3D(f,q,L):
 
   
 ## precomputed array
+A1=np.load("Precomp A1.npy",allow_pickle=True)
 
-def A1(n,q):
-    M=np.zeros((n+1,q))
-    [x,w]=quad2.item()[q]
-    for i in range(q):
-        a=((1-x[i])/2)**n
-        b=np.sqrt(w[i])
-        for j in range(n+1):
-            M[j][i]=b*a
-            a/=((1-x[i])/2)
-    return M
-
-def B1(n,q):
-    M=np.zeros((n+1,q))
-    [x,w]=quad2.item()[q]
-    for i in range(q):
-        a=(1+x[i])/2
-        b=np.sqrt(w[i])
-        t=1
-        for j in range(n+1):
-            M[j][i]=b*t
-            t*=a
-    return M
-
-def A2(n,q):
-    M=np.zeros((n+1,q))
-    [x,w]=quad1.item()[q]
-    for i in range(q):
-        a=((1-x[i])/2)**n
-        b=np.sqrt(w[i])
-        for j in range(n+1):
-            M[j][i]=b*a
-            a/=((1-x[i])/2)
-    return M
-
-def B2(n,q):
-    M=np.zeros((n+1,q))
-    [x,w]=quad1.item()[q]
-    for i in range(q):
-        a=(1+x[i])/2
-        b=np.sqrt(w[i])
-        t=1
-        for j in range(n+1):
-            M[j][i]=b*t
-            t*=a
-    return M
-
-def A3(n,q):
-    M=np.zeros((n+1,q))
-    [x,w]=quad0.item()[q]
-    for i in range(q):
-        a=((1-x[i])/2)**n
-        b=np.sqrt(w[i])
-        for j in range(n+1):
-            M[j][i]=b*a
-            a/=((1-x[i])/2)
-    return M
-
-def B3(n,q):
-    M=np.zeros((n+1,q))
-    [x,w]=quad0.item()[q]
-    for i in range(q):
-        a=(1+x[i])/2
-        b=np.sqrt(w[i])
-        t=1
-        for j in range(n+1):
-            M[j][i]=b*t
-            t*=a
-    return M
+B1=np.load("Precomp B1.npy",allow_pickle=True)
 
 
-def Moment3D(L,f,n,q):
+def Moment3D(L,f,n):
     t0=timeit.default_timer()
     T=AirT3D(L)
-    F=Eval3D(f, q, L)
+    F=Eval3D(f, n+1, L)
     P=Bin
-    D1=A1(n,q)
-    D2=A2(n,q)
-    D3=A3(n,q)
-    P1=B1(n,q)
-    P2=B2(n,q)
-    P3=B3(n,q)
+    Z1=A1.item()[n]
+    Z2=D1.item()[n]
+    Z3=D2.item()[n]
+    Y1=B1.item()[n]
+    Y2=P1.item()[n]
+    Y3=P2.item()[n]
     In=indexes3D(n)
     l=len(In)
     
-    H=np.zeros((n+1,q,q))  
+    H=np.zeros((n+1,n+1,n+1))  
     
     for b1 in range(n+1):
-        for i1 in range(q):
-            w=D1[b1][i1]*P1[b1][i1]
-            for i2 in range(q):
-                for i3 in range(q):
+        for i1 in range(n+1):
+            w=Z1[b1][i1]*Y1[b1][i1]
+            for i2 in range(n+1):
+                for i3 in range(n+1):
                     H[b1][i2][i3]+=w*F[i1][i2][i3]
                     
-    U=np.zeros((n+1,n+1,q))
+    U=np.zeros((n+1,n+1,n+1))
     
     for b1 in range(n+1):
         for b2 in range(n+1-b1):
-            for i2 in range(q):
-                w=D2[b1+b2][i2]*P2[b2][i2]
-                for i3 in range(q):
+            for i2 in range(n+1):
+                w=Z2[b1+b2][i2]*Y2[b2][i2]
+                for i3 in range(n+1):
                     U[b1][b2][i3]+=w*H[b1][i2][i3]
     
     M=np.zeros(l)
@@ -444,8 +330,8 @@ def Moment3D(L,f,n,q):
         b2=In[j][1]
         b3=In[j][2]
         b4=In[j][3]
-        for i3 in range(q):
-            M[j]+=D3[b1+b2+b3][i3]*P3[b3][i3]*U[b1][b2][i3]
+        for i3 in range(n+1):
+            M[j]+=Z3[b1+b2+b3][i3]*Y3[b3][i3]*U[b1][b2][i3]
         M[j]*=3*T*P[b1+b2][b2]*P[b1+b2+b3][b3]*P[n][b4]/32
     t1=timeit.default_timer()-t0
     #print("time elapsed ",t1)
@@ -645,8 +531,8 @@ def cst_ConvMat_2D(L,n,b):
     
     H1=indexes2D(n)
     H2=indexes2D(n-1)
-    h1=len(H1)
-    h2=len(H2)
+    h1=(n+2)*(n+1)//2
+    h2=n*(n+1)//2
     V=np.zeros((h1,h1))
     e=np.array([(1,0,0),(0,1,0),(0,0,1)])
     for i in range(h2):
@@ -656,7 +542,7 @@ def cst_ConvMat_2D(L,n,b):
             w=P[a[0]+b[0]][a[0]]*P[a[1]+b[1]][a[1]]*P[a[2]+b[2]][a[2]]
             for k in range(3):
                 alpha=tuple(sumVect(a, e[k]))
-                i2=H1.index(alpha)
+                i2=getIndex2D(n, alpha)
                 V[i2][j]+=w*s[k]
     return V
                       
@@ -673,8 +559,8 @@ def cst_ConvMat_3D(L,n,b):
     
     H1=indexes3D(n)
     H2=indexes3D(n-1)
-    h1=len(H1)
-    h2=len(H2)
+    h1=(n+3)*(n+2)*(n+1)//6
+    h2=n*(n+2)*(n+1)//6
     V=np.zeros((h1,h1))
     e=np.array([(1,0,0,0),(0,1,0,0),(0,0,1,0),(0,0,0,1)])
     for i in range(h2):
@@ -684,7 +570,7 @@ def cst_ConvMat_3D(L,n,b):
             w=P[a[0]+b[0]][a[0]]*P[a[1]+b[1]][a[1]]*P[a[2]+b[2]][a[2]]*P[a[3]+b[3]][a[3]]
             for k in range(4):
                 alpha=tuple(sumVect(a, e[k]))
-                i2=H1.index(alpha)
+                i2=getIndex3D(n, alpha)
                 V[i2][j]+=w*s[k]
     return V
     
@@ -695,8 +581,8 @@ def cst_ConvMat_3D(L,n,b):
 
 ### 1D
 
-def MassMat1D(a,b,f,n,q):
-    H=Moment1D(a,b,f,2*n,q)
+def MassMat1D(a,b,f,n):
+    H=Moment1D(a,b,f,2*n)
     P=Bin
     M=np.zeros((n+1,n+1))
     for a1 in range(n+1):
@@ -707,8 +593,8 @@ def MassMat1D(a,b,f,n,q):
 
 ### 2D
 
-def MassMat2D(L,f,n,q):
-    H=Moment2D(L,f,2*n,q)
+def MassMat2D(L,f,n):
+    H=Moment2D(L,f,2*n)
     In=indexes2D(n)
     l=(n+2)*(n+1)//2
     P=Bin
@@ -731,8 +617,8 @@ def MassMat2D(L,f,n,q):
 
 ### 3D
 
-def MassMat3D(L,f,n,q):
-    H=Moment3D(L,f,2*n,q)
+def MassMat3D(L,f,n):
+    H=Moment3D(L,f,2*n)
     In=indexes3D(n)
     l=len(In)
     P=Bin
@@ -758,8 +644,8 @@ def MassMat3D(L,f,n,q):
 ## Stiffness Matrix
 ### 1D
 
-def StiffMat1D(a,b,f,n,q):
-    H=Moment1D(a, b, f, 2*n-2, q)
+def StiffMat1D(a,b,f,n):
+    H=Moment1D(a, b, f, 2*n-2)
     v=np.array([1/(a-b),1/(b-a)])
     M=np.zeros((2*n-1,2,2))
     for b in range(2*n-1):
@@ -781,15 +667,15 @@ def StiffMat1D(a,b,f,n,q):
     return S        
 
 ### 2D
-
-def StiffMat2D(L,A,n,q):
+ 
+def StiffMat2D(L,A,n):
     t0=timeit.default_timer()
     G=grad2D(L)
     l=n*(2*n-1)
     H=np.zeros((l,2,2))
     for i in range(2):
         for j in range(2):
-            O=Moment2D(L, lambda x,y: A(x,y)[i][j], 2*n-2, 2*n-1)
+            O=Moment2D(L, lambda x,y: A(x,y)[i][j], 2*n-2)
             for b in range(l):
                 H[b][i][j]=O[b]
     s=np.zeros((l,3,3))
@@ -798,8 +684,6 @@ def StiffMat2D(L,A,n,q):
             for j in range(3):
                 w=np.dot(H[b],G[i])
                 s[b][i][j]+=np.vdot(G[j],w)
-    In=indexes2D(n)
-    Ind=indexes2D(2*n-2)
     P=Bin
     w=(n+2)*(n+1)//2
     S=np.zeros((w,w))
@@ -819,27 +703,26 @@ def StiffMat2D(L,A,n,q):
                     u=tuple(sumVect(a, e[i2]))
                     v=tuple(sumVect(b, e[j2]))
                     Z=tuple(sumVect(a, b))
-                    k=In.index(u)
-                    f=In.index(v)
-                    z=Ind.index(Z)
+                    k=getIndex2D(n, u)
+                    f=getIndex2D(n, v)
+                    z=getIndex2D(2*n-2, Z)
                     S[k][f]+=w*s[z][i2][j2]
     t2= timeit.default_timer()-t1
     #print("time elapsed evaluating the moment is ",t2)
     return S
- 
+
 ### 3D
-           
-def StiffMat3D(L,A,n,q):
+
+def StiffMat3D(L,A,n):
     # A is a 3*3 matrix valued function
     G=grad3D(L)
-    IZ=indexes3D(2*n-2)
-    l=len(IZ)
+    l=n*(2*n+1)*(2*n-1)//3
     H=np.zeros((l,3,3))
-    for b in range(l):
-        for i in range(3):
-            for j in range(3):
-                H[b][i][j]=Moment3D(L, lambda x,y,z: A(x,y,z)[i][j], 2*n-2, q)[b]
-
+    for i in range(3):
+        for j in range(3):
+            V=Moment3D(L, lambda x,y,z: A(x,y,z)[i][j], 2*n-2)
+            for b in range(l):
+                H[b][i][j]=V[b]
     s=np.zeros((l,4,4))
     for b in range(l):
         for i in range(3):
@@ -847,12 +730,11 @@ def StiffMat3D(L,A,n,q):
                 w=np.dot(H[b],G[j])
                 s[b][i][j]+=np.vdot(G[i],w)
     
-    q=((n+1)*(n+2)*(n+3) )//6
-    S=np.zeros((q,q))
+    L=((n+1)*(n+2)*(n+3) )//6
+    S=np.zeros((L,L))
     
     e=np.array([(1,0,0,0),(0,1,0,0),(0,0,1,0),(0,0,0,1)])
     In=indexes3D(n-1)
-    Ind=indexes3D(n)
     y=len(In)
     P=Bin
     for i in range(y):
@@ -876,9 +758,9 @@ def StiffMat3D(L,A,n,q):
                     u=tuple(sumVect(a, e[i2]))
                     v=tuple(sumVect(b, e[j2]))
                     Z=tuple(sumVect(a, b))
-                    k=Ind.index(u)
-                    o=Ind.index(v)
-                    z=IZ.index(Z)
+                    k=getIndex3D(n, u)
+                    o=getIndex3D(n, v)
+                    z=getIndex3D(2*n-2, Z)
                     S[k][o]+=w*s[z][i2][j2]
     return S
 
@@ -907,17 +789,18 @@ def Conv1D(a,b,f,n,q):
 
 ### 2D
 
-def Conv2D(L,f,n,q):
+def Conv2D(L,f,n):
     # f is a 2dimensional vector valued function
     P=Bin
     G=grad2D(L)
-    In=indexes2D(2*n-1)
-    l=len(In)
+    l=n*(2*n+1)
     
     M1=np.zeros((l,2))
-    for b in range(l):
-        for j in range(2):
-            M1[b][j]+=Moment2D(L, lambda x,y:f(x,y)[j], 2*n-1, q)[b]
+    
+    for j in range(2):
+        V=Moment2D(L, lambda x,y:f(x,y)[j], 2*n-1)
+        for b in range(l):
+            M1[b][j]+=V[b]
             
     M2=np.zeros((l,3))
     for b in range(l):
@@ -926,8 +809,8 @@ def Conv2D(L,f,n,q):
     
     H1=indexes2D(n)
     H2=indexes2D(n-1)
-    h1=len(H1)
-    h2=len(H2)
+    h1=(n+2)*(n+1)//2
+    h2=n*(n+1)//2
     V=np.zeros((h1,h1))
     e=np.array([(1,0,0),(0,1,0),(0,0,1)])
     for i in range(h2):
@@ -939,24 +822,25 @@ def Conv2D(L,f,n,q):
             for k in range(3):
                 alpha=tuple(sumVect(a, e[k]))
                 s=tuple(sumVect(a,b))
-                i2=H1.index(alpha)
-                q=In.index(s)
-                V[i2][j]+=w*M2[q][k]
+                i2=getIndex2D(n, alpha)
+                x=getIndex2D(2*n-1, s)
+                V[i2][j]+=w*M2[x][k]
     return V
     
 ### 3D 
 
-def Conv3D(L,f,q,n):
+def Conv3D(L,f,n):
     # f is a 2dimensional vector valued function
     P=Bin
     G=grad3D(L)
-    In=indexes3D(2*n-1)
-    l=len(In)
+    l=n*(2*n+2)*(2*n+1)//3
     
     M1=np.zeros((l,3))
-    for b in range(l):
-        for j in range(3):
-            M1[b][j]+=Moment3D(L, lambda x,y,z:f(x,y,z)[j], 2*n-1, q)[b]
+    
+    for j in range(3):
+        V=Moment3D(L, lambda x,y,z:f(x,y,z)[j], 2*n-1)
+        for b in range(l):
+            M1[b][j]+=V[b]
             
     M2=np.zeros((l,4))
     for b in range(l):
@@ -965,8 +849,8 @@ def Conv3D(L,f,q,n):
     
     H1=indexes3D(n)
     H2=indexes3D(n-1)
-    h1=len(H1)
-    h2=len(H2)
+    h1=(n+3)*(n+2)*(n+1)//6
+    h2=n*(n+1)*(n+2)//6
     V=np.zeros((h1,h1))
     e=np.array([(1,0,0,0),(0,1,0,0),(0,0,1,0),(0,0,0,1)])
     for i in range(h2):
@@ -978,22 +862,39 @@ def Conv3D(L,f,q,n):
             for k in range(4):
                 alpha=tuple(sumVect(a, e[k]))
                 s=tuple(sumVect(a, b))
-                i2=H1.index(alpha)
-                q=In.index(s)
-                V[i2][j]+=w*M2[q][k]
+                i2=getIndex3D(n, alpha)
+                x=getIndex3D(2*n-1, s)
+                V[i2][j]+=w*M2[x][k]
     return V
-
-
 # Test:
     ## Poisson equation  -div( grad u)=1, u=0 on the boundary
 def A(x,y):
     return np.array([[1,0],[1,0]])
 
+def deCasteljau_step_2D(lam,C,l):
+    i=0
+    j=1
+    for r in range(1,l+1):
+        for k in range(r):
+            C[i]=lam[0]*C[i]+lam[1]*C[j]+lam[2]*C[j+1]
+            i+=1
+            j+=1
+        j+=1
+    return C[:-(l+1)]
+
+### n degree of BB-polynom
+
+def deCasteljau2D(lam,C,n):
+    if len(C)>1:
+        return deCasteljau2D(lam,deCasteljau_step_2D(lam, C, n),n-1)
+    else:
+        return C[0]
+
 def sol2D(n):
     t0=timeit.default_timer()
-    K=StiffMat2D([0,0,1,0,0,1], A, n, n+1)
+    K=StiffMat2D([0,0,1,0,0,1], A, n)
     #print(K[4][4])
-    B=Moment2D([0,0,1,0,0,1], lambda x,y:1, n, n+1)
+    B=Moment2D([0,0,1,0,0,1], lambda x,y:1, n)
     L=indexes2D(n)
     w=(n+1)*(n+2)//2
     i=0
@@ -1014,10 +915,29 @@ def sol2D(n):
             i+=1
     #print('K ',K)
     #print('B ',B)
-    print(C)
+    #print(C)
     X=np.array(np.linalg.solve(K,B))
-    print(X[36])
+    #print(X)
     t1=timeit.default_timer()-t0
     print("time elapsed ",t1)
+    """a=len(C)
+    BB=np.zeros(w,dtype="longdouble")
+    for i in range(a):
+        BB[C[i]]+=X[i]
+    lesx=np.zeros(w)
+    lesy=np.zeros(w)
+    lesz=np.zeros(w)
+    for k in range(w):
+        (i,j,k)=L[k]
+        i=i/n
+        j=j/n
+        lesx[k]=i
+        lesy[k]=j
+        z=deCasteljau2D(L[k],BB,n)
+        lesz[k]=z
+    ax = plt.axes(projection='3d')
+    ax.scatter3D(lesx, lesy, lesz)"""
+    
     
 
+    

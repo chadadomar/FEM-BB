@@ -1,4 +1,4 @@
- import numpy as np
+import numpy as np
 import scipy.special
 
 # Storing points and weights of Gauss-Jacobi quadrature rule
