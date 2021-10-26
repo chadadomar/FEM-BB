@@ -428,7 +428,7 @@ def cst_StiffMat_1D(L,n,A):
             
 ##2D
     
-def cst_StiffMat_2D(L,n,A):
+def cst_StiffMat_2D(L,A,n):
     t0=timeit.default_timer()
     T=AirT2D(L)
     M=CstMassMat2D(n-1, T)
@@ -462,7 +462,7 @@ def cst_StiffMat_2D(L,n,A):
 
 ## 3D  
 
-def cst_StiffMat_3D(L,n,A):
+def cst_StiffMat_3D(L,A,n):
     t0=timeit.default_timer()
     T=AirT3D(L)
     M=CstMassMat3D(n-1, T)
@@ -938,6 +938,38 @@ def sol2D(n):
     ax = plt.axes(projection='3d')
     ax.scatter3D(lesx, lesy, lesz)"""
     
-    
+# Poisson:  -u"=1 , u(0)=u(1)=0 
 
+def deCasteljau1D(t,c):
+    n=len(c)
+    for i in range(1,n):
+        for j in range(n-i):
+            c[j]=c[j]*(1-t)+c[j+1]*t
+    return c[0]
+   
+def Sol1D(n):
+    K=cst_StiffMat_1D([0,1],n,1)
+    K=np.delete(K,n,axis=0)
+    K=np.delete(K,n,axis=1)
+    K=np.delete(K,0,axis=0)
+    K=np.delete(K,0,axis=1)
+    B=Moment1D(0, 1, lambda x:1, n)
+    B=np.delete(B,n)
+    B=np.delete(B,0)
+    X=np.linalg.solve(K,B)
+    return X
+
+def plot1D(n,m):
+    lesx=np.linspace(0,1,m)
+    C=np.zeros(n+1)
+    C[1:n]=Sol1D(n)
+    print(C)
+    lesy=[]
+    In=[]
+    for x in lesx:
+        lesy.append(deCasteljau1D(x,C))
+        In.append(0.5*(x-x*x))
+    plt.plot(lesx,lesy)
+    plt.plot(lesx,In)
+    plt.show()
     
