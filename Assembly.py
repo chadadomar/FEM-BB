@@ -3,6 +3,7 @@ import numpy as np
 import timeit
 from mpl_toolkits import mplot3d
 import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
 #np.seterr(all='warn')
 
 
@@ -503,7 +504,7 @@ def cst_ConvMat_1D(L,n,b):
     P=Bin
     [u,v]=L
     T=abs(u-v)
-    r=0.5*T/P[2*n-1][2]
+    r=0.5*T/P[2*n-1][n]
     v1=r*b/(u-v)
     v2=r*b/(v-u)
     V=np.zeros((n+1,n+1))
@@ -866,10 +867,23 @@ def Conv3D(L,f,n):
                 x=getIndex3D(2*n-1, s)
                 V[i2][j]+=w*M2[x][k]
     return V
-# Test:
-    ## Poisson equation  -div( grad u)=1, u=0 on the boundary
-def A(x,y):
-    return np.array([[1,0],[1,0]])
+
+#Evaluation of BB
+
+## 1 dimension
+
+def deCasteljau1D(t, coefs):
+    beta = [c for c in coefs]
+    n = len(beta)
+    for j in range(1, n):
+        for k in range(n - j):
+            beta[k] = beta[k] * (1 - t) + beta[k + 1] * t
+    return beta[0]
+
+## 2 dimension
+### lam: barycentrique cordinate of the point
+### C vector of the BB form ordered in lexicographiqe
+### l step index
 
 def deCasteljau_step_2D(lam,C,l):
     i=0
@@ -890,86 +904,160 @@ def deCasteljau2D(lam,C,n):
     else:
         return C[0]
 
-def sol2D(n):
-    t0=timeit.default_timer()
-    K=StiffMat2D([0,0,1,0,0,1], A, n)
-    #print(K[4][4])
-    B=Moment2D([0,0,1,0,0,1], lambda x,y:1, n)
-    L=indexes2D(n)
-    w=(n+1)*(n+2)//2
-    i=0
-    s=0
-    C=[]
-    while i<w :
-        #print("i,w ",i,w)
-        p=L[i][0]*L[i][1]*L[i][2]
-        #print("p ",p)
-        if p==0:
-                K=np.delete(K,(i-s),axis=0)
-                K=np.delete(K,(i-s),axis=1)
-                B=np.delete(B,i-s)
-                s+=1
-                i+=1
-        else:
-            C.append(i)
-            i+=1
-    #print('K ',K)
-    #print('B ',B)
-    #print(C)
-    X=np.array(np.linalg.solve(K,B))
-    #print(X)
-    t1=timeit.default_timer()-t0
-    print("time elapsed ",t1)
-    """a=len(C)
-    BB=np.zeros(w,dtype="longdouble")
-    for i in range(a):
-        BB[C[i]]+=X[i]
-    lesx=np.zeros(w)
-    lesy=np.zeros(w)
-    lesz=np.zeros(w)
-    for k in range(w):
-        (i,j,k)=L[k]
-        i=i/n
-        j=j/n
-        lesx[k]=i
-        lesy[k]=j
-        z=deCasteljau2D(L[k],BB,n)
-        lesz[k]=z
-    ax = plt.axes(projection='3d')
-    ax.scatter3D(lesx, lesy, lesz)"""
-    
-# Poisson:  -u"=1 , u(0)=u(1)=0 
 
-def deCasteljau1D(t,c):
-    n=len(c)
-    for i in range(1,n):
-        for j in range(n-i):
-            c[j]=c[j]*(1-t)+c[j+1]*t
-    return c[0]
-   
-def Sol1D(n):
+
+# Tests:
+
+# Poisson 1D :  -u"=1 on [0,1], u(0)=u(1)=0 
+def poisson1D(n):
+    # return the BB vector of the solution, taking in account boundary condition
     K=cst_StiffMat_1D([0,1],n,1)
     K=np.delete(K,n,axis=0)
     K=np.delete(K,n,axis=1)
     K=np.delete(K,0,axis=0)
     K=np.delete(K,0,axis=1)
-    B=Moment1D(0, 1, lambda x:1, n)
+    B=Moment1D(0, 1, lambda x: 1, n)
     B=np.delete(B,n)
     B=np.delete(B,0)
     X=np.linalg.solve(K,B)
     return X
 
-def plot1D(n,m):
+def plotpoisson1D(n,m):
     lesx=np.linspace(0,1,m)
     C=np.zeros(n+1)
-    C[1:n]=Sol1D(n)
+    C[1:n]=poisson1D(n)
     print(C)
     lesy=[]
     In=[]
     for x in lesx:
         lesy.append(deCasteljau1D(x,C))
-        In.append(0.5*(x-x*x))
-    plt.plot(lesx,lesy)
-    plt.plot(lesx,In)
+        In.append((x-x*x)/2)
+    plt.title("poisson -u''=1")
+    plt.plot(lesx,lesy,'r',label="approx")
+    plt.plot(lesx,In, 'g', label="exact")
+    plt.legend()
     plt.show()
+ 
+## Exemple u'=1 , u(0)=0, sol exacte u(x)=x
+
+def Ex1(n):
+    V=cst_ConvMat_1D([0,1],n,1)
+    V=np.delete(V,n,axis=0)
+    V=np.delete(V,n,axis=1)
+    B=Moment1D(0, 1, lambda x: 1, n)
+    B=np.delete(B,n)
+    X=np.linalg.solve(V,B)
+    return X
+
+def plotEx1(n,m):
+    lesx=np.linspace(0,1,m)
+    C=np.zeros(n+1)
+    C[1:n+1]=Ex1(n)
+    print(C)
+    lesy=[]
+    for x in lesx:
+        lesy.append(deCasteljau1D(x,C))
+    plt.title("u'=x")
+    plt.plot(lesx,lesy)
+    plt.show()
+
+## Autre exemple: -u"+u=1 on (0,1), u(0)=u(1)=0
+
+def Ex2(n):
+    K=cst_StiffMat_1D([0,1],n,1)
+    K=np.delete(K,n,axis=0)
+    K=np.delete(K,n,axis=1)
+    K=np.delete(K,0,axis=0)
+    K=np.delete(K,0,axis=1)
+    V=cst_ConvMat_1D([0,1],n,1)
+    V=np.delete(V,n,axis=0)
+    V=np.delete(V,n,axis=1)
+    V=np.delete(V,0,axis=0)
+    V=np.delete(V,0,axis=1)
+    B=Moment1D(0, 1, lambda x: 1, n)
+    B=np.delete(B,n)
+    B=np.delete(B,0)
+    X=np.linalg.solve(K+V,B)
+    return X
+
+# the exacte solution of the above equation
+def exact(x):
+    A=1/(1-np.exp(1))
+    return A*(np.exp(x)-1)+x
+
+def plotEx2(n,m):
+    lesx=np.linspace(0,1,m)
+    C=np.zeros(n+1)
+    C[1:n]=Ex2(n)
+    print(C)
+    lesy=[]
+    In=[]
+    for x in lesx:
+        lesy.append(deCasteljau1D(x,C))
+        In.append(exact(x))
+    plt.title("-u''+u=1")
+    plt.plot(lesx,lesy,"r",label="aprox")
+    plt.plot(lesx,In,"g",label="exact")
+    plt.legend()
+    plt.show()
+
+
+## Poisson equation  div( grad u)=2(x+y), u=0 on the boundary of the reference triangle
+
+def A(x,y):
+    return np.array([[1,0],[1,0]])
+
+def sol2D(n):
+    t0=timeit.default_timer()
+    K=StiffMat2D([0,0,1,0,0,1], A, n)
+    B=Moment2D([0,0,1,0,0,1], lambda x,y:2*(x+y), n)
+    L=indexes2D(n)
+    w=(n+1)*(n+2)//2
+    C=[]
+    Q=[]
+    for i in range(w-1,-1,-1):
+        if L[i][0]*L[i][1]*L[i][2]==0:
+            K=np.delete(K,i,axis=0)
+            K=np.delete(K,i,axis=1)
+            B=np.delete(B,i)
+            C.append(i)
+        else:
+            Q.append(i)
+    #print('K ',K)
+    #print('B ',B)
+    #print(C)
+    #print(Q)
+    X=np.array(np.linalg.solve(K,B))
+    #print(X)
+    t1=timeit.default_timer()-t0
+    #print("time elapsed ",t1))
+    Q.reverse()
+    f=len(Q)
+    BB=np.zeros(w)
+    for i in range(f):
+        BB[Q[i]]=X[i]
+    return BB
+
+    
+
+def plotpoisson2D(n,m):
+    C=sol2D(n)
+    l=indexes2D(m)
+    w=(m+2)*(m+1)//2
+    lesx=[]
+    lesy=[]
+    lesz=[]
+    for i in range(w):
+        lesx.append(l[i][1]/m)
+        lesy.append(l[i][2]/m)
+        lesz.append(deCasteljau2D(l[i],C,n))
+    fig = plt.figure()
+    ax = plt.axes(projection='3d')
+    ax.scatter3D(lesx, lesy, lesz, cmap='Blues')
+        
+
+
+
+
+
     
