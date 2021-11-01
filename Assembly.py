@@ -885,7 +885,8 @@ def deCasteljau1D(t, coefs):
 ### C vector of the BB form ordered in lexicographiqe
 ### l step index
 
-def deCasteljau_step_2D(lam,C,l):
+def deCasteljau_step_2D(lam,BB,l):
+    C=[x for x in BB]
     i=0
     j=1
     for r in range(1,l+1):
@@ -898,7 +899,8 @@ def deCasteljau_step_2D(lam,C,l):
 
 ### n degree of BB-polynom
 
-def deCasteljau2D(lam,C,n):
+def deCasteljau2D(lam,BB,n):
+    C=[x for x in BB]
     if len(C)>1:
         return deCasteljau2D(lam,deCasteljau_step_2D(lam, C, n),n-1)
     else:
@@ -908,7 +910,7 @@ def deCasteljau2D(lam,C,n):
 
 # Tests:
 
-# Poisson 1D :  -u"=1 on [0,1], u(0)=u(1)=0 
+## Poisson 1D :  -u"=1 on [0,1], u(0)=u(1)=0 
 def poisson1D(n):
     # return the BB vector of the solution, taking in account boundary condition
     K=cst_StiffMat_1D([0,1],n,1)
@@ -942,10 +944,10 @@ def plotpoisson1D(n,m):
 
 def Ex1(n):
     V=cst_ConvMat_1D([0,1],n,1)
-    V=np.delete(V,n,axis=0)
-    V=np.delete(V,n,axis=1)
+    V=np.delete(V,0,axis=0)
+    V=np.delete(V,0,axis=1)
     B=Moment1D(0, 1, lambda x: 1, n)
-    B=np.delete(B,n)
+    B=np.delete(B,0)
     X=np.linalg.solve(V,B)
     return X
 
@@ -954,11 +956,14 @@ def plotEx1(n,m):
     C=np.zeros(n+1)
     C[1:n+1]=Ex1(n)
     print(C)
+    np.flip(C)
     lesy=[]
     for x in lesx:
         lesy.append(deCasteljau1D(x,C))
     plt.title("u'=x")
-    plt.plot(lesx,lesy)
+    plt.plot(lesx,lesy,label="approx")
+    plt.plot(lesx,lesx,label="exacte")
+    plt.legend()
     plt.show()
 
 ## Autre exemple: -u"+u=1 on (0,1), u(0)=u(1)=0
@@ -989,7 +994,7 @@ def plotEx2(n,m):
     lesx=np.linspace(0,1,m)
     C=np.zeros(n+1)
     C[1:n]=Ex2(n)
-    print(C)
+    #print(C)
     lesy=[]
     In=[]
     for x in lesx:
@@ -1010,7 +1015,7 @@ def A(x,y):
 def sol2D(n):
     t0=timeit.default_timer()
     K=StiffMat2D([0,0,1,0,0,1], A, n)
-    B=Moment2D([0,0,1,0,0,1], lambda x,y:2*(x+y), n)
+    B=Moment2D([0,0,1,0,0,1], lambda x,y:-2*(x+y), n)
     L=indexes2D(n)
     w=(n+1)*(n+2)//2
     C=[]
@@ -1038,22 +1043,30 @@ def sol2D(n):
         BB[Q[i]]=X[i]
     return BB
 
-    
 
 def plotpoisson2D(n,m):
     C=sol2D(n)
-    l=indexes2D(m)
-    w=(m+2)*(m+1)//2
-    lesx=[]
-    lesy=[]
-    lesz=[]
-    for i in range(w):
-        lesx.append(l[i][1]/m)
-        lesy.append(l[i][2]/m)
-        lesz.append(deCasteljau2D(l[i],C,n))
-    fig = plt.figure()
+    lesx=np.linspace(0,1,m)
+    lesy=np.linspace(0,1,m)
+    X,Y=np.meshgrid(lesx,lesy)
+    Z=np.zeros((m,m))
+    T=np.zeros((m,m))
+    E=np.zeros((m,m))
+    for i in range(m):
+        for j in range(m):
+            x=X[i][j]
+            y=Y[i][j]
+            if x+y<=1:
+                Z[i][j]+=deCasteljau2D((1-x-y,x,y),C,n)
+                T[i][j]+=x*y*(x+y-1)
+                E[i][j]+=abs(Z[i][j]-T[i][j])
+    fig = plt.figure(figsize =(14, 9))
     ax = plt.axes(projection='3d')
-    ax.scatter3D(lesx, lesy, lesz, cmap='Blues')
+    #ax.plot_surface(X, Y, Z)
+    surf=ax.plot_surface(X, Y, Z,cmap='viridis')
+    #fig.colorbar(surf, ax = ax,shrink = 0.5, aspect = 5)
+    #ax.set_title('Erreur u''=2(x+y)')
+    plt.show()
         
 
 
