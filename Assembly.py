@@ -1,9 +1,7 @@
 import numpy as np
 #import scipy.special
 import timeit
-from mpl_toolkits import mplot3d
 import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
 #np.seterr(all='warn')
 
 
@@ -934,7 +932,7 @@ def plotpoisson1D(n,m):
     for x in lesx:
         lesy.append(deCasteljau1D(x,C))
         In.append((x-x*x)/2)
-    plt.title("poisson -u''=1")
+    plt.title(r"poisson 1D: $-u^{''}(x)=1; \, u(0)=u(1)=0$")
     plt.plot(lesx,lesy,'r',label="approx")
     plt.plot(lesx,In, 'g', label="exact")
     plt.legend()
@@ -944,10 +942,10 @@ def plotpoisson1D(n,m):
 
 def Ex1(n):
     V=cst_ConvMat_1D([0,1],n,1)
-    V=np.delete(V,0,axis=0)
-    V=np.delete(V,0,axis=1)
+    V=np.delete(V,n,axis=0)
+    V=np.delete(V,n,axis=1)
     B=Moment1D(0, 1, lambda x: 1, n)
-    B=np.delete(B,0)
+    B=np.delete(B,n)
     X=np.linalg.solve(V,B)
     return X
 
@@ -956,11 +954,10 @@ def plotEx1(n,m):
     C=np.zeros(n+1)
     C[1:n+1]=Ex1(n)
     print(C)
-    np.flip(C)
     lesy=[]
     for x in lesx:
         lesy.append(deCasteljau1D(x,C))
-    plt.title("u'=x")
+    plt.title(r"$u'(x)=1$ et $u(0)=0$")
     plt.plot(lesx,lesy,label="approx")
     plt.plot(lesx,lesx,label="exacte")
     plt.legend()
@@ -994,24 +991,28 @@ def plotEx2(n,m):
     lesx=np.linspace(0,1,m)
     C=np.zeros(n+1)
     C[1:n]=Ex2(n)
-    #print(C)
+    print(C)
     lesy=[]
     In=[]
     for x in lesx:
         lesy.append(deCasteljau1D(x,C))
         In.append(exact(x))
-    plt.title("-u''+u=1")
+    plt.title("$-u^{''}+u=1$")
     plt.plot(lesx,lesy,"r",label="aprox")
     plt.plot(lesx,In,"g",label="exact")
     plt.legend()
     plt.show()
 
 
-## Poisson equation  div( grad u)=2(x+y), u=0 on the boundary of the reference triangle
+#2D 
+## Poisson equation  div( grad u)=2(x+y), u=0 on the boundary of the 
+## reference triangle
 
+# matrix in the variational formula
 def A(x,y):
     return np.array([[1,0],[1,0]])
 
+# Return The BB-vector of the FEM-solution
 def sol2D(n):
     t0=timeit.default_timer()
     K=StiffMat2D([0,0,1,0,0,1], A, n)
@@ -1069,8 +1070,48 @@ def plotpoisson2D(n,m):
     plt.show()
         
 
+## Exact sol is given by u(x,y)=x*y(x+y-1)
+def plotexact2D(m):
+    lesx=np.linspace(0,1,m)
+    lesy=np.linspace(0,1,m)
+    X,Y=np.meshgrid(lesx,lesy)
+    Z=np.zeros((m,m))
+    T=np.zeros((m,m))
+    E=np.zeros((m,m))
+    for i in range(m):
+        for j in range(m):
+            x=X[i][j]
+            y=Y[i][j]
+            if x+y<=1:
+                T[i][j]+=x*y*(x+y-1)
+    fig = plt.figure(figsize =(14, 9))
+    ax = plt.axes(projection='3d')
+    #ax.plot_surface(X, Y, Z)
+    surf=ax.plot_surface(X, Y, T,cmap='viridis')
+    #fig.colorbar(surf, ax = ax,shrink = 0.5, aspect = 5)
+    #ax.set_title('Erreur u''=2(x+y)')
+    plt.show()
 
-
-
-
-    
+def ploterror2D(n,m):
+    C=sol2D(n)
+    lesx=np.linspace(0,1,m)
+    lesy=np.linspace(0,1,m)
+    X,Y=np.meshgrid(lesx,lesy)
+    Z=np.zeros((m,m))
+    T=np.zeros((m,m))
+    E=np.zeros((m,m))
+    for i in range(m):
+        for j in range(m):
+            x=X[i][j]
+            y=Y[i][j]
+            if x+y<=1:
+                Z[i][j]+=deCasteljau2D((1-x-y,x,y),C,n)
+                T[i][j]+=x*y*(x+y-1)
+                E[i][j]+=abs(Z[i][j]-T[i][j])
+    fig = plt.figure(figsize =(14, 9))
+    ax = plt.axes(projection='3d')
+    #ax.plot_surface(X, Y, Z)
+    surf=ax.plot_surface(X, Y, E,cmap='viridis')
+    #fig.colorbar(surf, ax = ax,shrink = 0.5, aspect = 5)
+    #ax.set_title('Erreur u''=2(x+y)')
+    plt.show()
