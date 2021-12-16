@@ -1,8 +1,11 @@
 import numpy as np
+from scipy.integrate import simps
+from scipy import integrate
 #import scipy.special
 import timeit
 import matplotlib.pyplot as plt
 #np.seterr(all='warn')
+
 
 
 # Polynomial order n is limited at 100
@@ -907,6 +910,9 @@ def deCasteljau2D(lam,BB,n):
 
 
 # Tests:
+    
+## change font size in plot:
+plt.rcParams.update({'font.size': 20})
 
 ## Poisson 1D :  -u"=1 on [0,1], u(0)=u(1)=0 
 def poisson1D(n):
@@ -921,7 +927,7 @@ def poisson1D(n):
     B=np.delete(B,0)
     X=np.linalg.solve(K,B)
     return X
-
+## The exacte solution is given by u(x)=x(1-x)/2
 def plotpoisson1D(n,m):
     lesx=np.linspace(0,1,m)
     C=np.zeros(n+1)
@@ -937,6 +943,33 @@ def plotpoisson1D(n,m):
     plt.plot(lesx,In, 'g', label="exact")
     plt.legend()
     plt.show()
+    
+def plotpoisson1dError(n,m):
+    lesx=np.linspace(0,1,m)
+    C=np.zeros(n+1)
+    C[1:n]=poisson1D(n)
+    print(C)
+    lesy=[]
+    for x in lesx:
+        lesy.append(deCasteljau1D(x,C)-x*(1-x)/2)
+    plt.title(r"$-u^{''}(x)=1; \, u(0)=u(1)=0$ , $n=$"+str(n))
+    plt.plot(lesx,lesy,'r',label="error")
+    plt.legend()
+    plt.show()
+    
+def L2_normErrorP1D(n,m):
+    lesx=np.linspace(0,1,m)
+    C=np.zeros(n+1)
+    C[1:n]=poisson1D(n)
+    print(C)
+    lesy=[]
+    for x in lesx:
+        lesy.append(deCasteljau1D(x,C)-x*(1-x)/2)
+    e=np.array(lesy)
+    e=e**2
+    x=np.array(lesx)
+    E=np.sqrt(0.5*np.sum((e[:-1] + e[1:])*(x[1:] - x[:-1])))
+    print("{:.2e}".format(E))
  
 ## Exemple u'=1 , u(0)=0, sol exacte u(x)=x
 
@@ -962,8 +995,37 @@ def plotEx1(n,m):
     plt.plot(lesx,lesx,label="exacte")
     plt.legend()
     plt.show()
+    
+def plotEx1Error(n,m):
+    lesx=np.linspace(0,1,m)
+    C=np.zeros(n+1)
+    C[1:n+1]=Ex1(n)
+    print(C)
+    lesy=[]
+    for x in lesx:
+        lesy.append(deCasteljau1D(x,C)-x)
+    plt.title(r"$u'(x)=1$ et $u(0)=0$ where $n$="+str(n))
+    plt.plot(lesx,lesy,label="error")
+    plt.legend()
+    #plt.xlim(0,1)
+    #plt.ylim(-1, 1)
+    plt.show()
 
-## Autre exemple: -u"+u=1 on (0,1), u(0)=u(1)=0
+def L2_normErrorEx1(n,m):
+    lesx=np.linspace(0,1,m)
+    C=np.zeros(n+1)
+    C[1:n+1]=Ex1(n)
+    print(C)
+    lesy=[]
+    for x in lesx:
+        lesy.append(deCasteljau1D(x,C)-x)
+    e=np.array(lesy)
+    e=e**2
+    x=np.array(lesx)
+    E=np.sqrt(0.5*np.sum((e[:-1] + e[1:])*(x[1:] - x[:-1])))
+    print("{:.2e}".format(E))
+    
+## Another exemple: -u"+u=1 on (0,1), u(0)=u(1)=0
 
 def Ex2(n):
     K=cst_StiffMat_1D([0,1],n,1)
@@ -987,21 +1049,33 @@ def exact(x):
     A=1/(1-np.exp(1))
     return A*(np.exp(x)-1)+x
 
-def plotEx2(n,m):
+def plotEx2Error(n,m):
     lesx=np.linspace(0,1,m)
     C=np.zeros(n+1)
     C[1:n]=Ex2(n)
     print(C)
     lesy=[]
-    In=[]
     for x in lesx:
-        lesy.append(deCasteljau1D(x,C))
-        In.append(exact(x))
-    plt.title("$-u^{''}+u=1$")
+        lesy.append(deCasteljau1D(x,C)-exact(x))
+    plt.title("Error $-u^{''}+u=1$ wher $n=$"+str(n))
     plt.plot(lesx,lesy,"r",label="aprox")
-    plt.plot(lesx,In,"g",label="exact")
     plt.legend()
     plt.show()
+
+def L2_normErrorEx2(n,m):
+    lesx=np.linspace(0,1,m)
+    C=np.zeros(n+1)
+    C[1:n]=Ex2(n)
+    print(C)
+    lesy=[]
+    for x in lesx:
+        lesy.append(deCasteljau1D(x,C)-exact(x))
+    e=np.array(lesy)
+    e=e**2
+    x=np.array(lesx)
+    E=np.sqrt(0.5*np.sum((e[:-1] + e[1:])*(x[1:] - x[:-1])))
+    print("{:.2e}".format(E))
+
 
 
 #2D 
@@ -1108,10 +1182,44 @@ def ploterror2D(n,m):
                 Z[i][j]+=deCasteljau2D((1-x-y,x,y),C,n)
                 T[i][j]+=x*y*(x+y-1)
                 E[i][j]+=abs(Z[i][j]-T[i][j])
-    fig = plt.figure(figsize =(14, 9))
-    ax = plt.axes(projection='3d')
+    fig=plt.figure(figsize=(6,5))
+    left, bottom, width, height = 0.1, 0.1, 0.8, 0.8
+    ax=fig.add_axes([left, bottom, width, height]) 
+    cp = plt.contourf(X, Y, E)
+    plt.colorbar(cp)
+    ax.set_title('Error of poisson 2D where $n=$'+str(n))
+    #ax.set_xlabel('x')
+    #ax.set_ylabel('y')
+    #fig = plt.figure(figsize =(14, 9))
+    #ax = plt.axes(projection='3d')
     #ax.plot_surface(X, Y, Z)
-    surf=ax.plot_surface(X, Y, E,cmap='viridis')
+    #surf=ax.plot_surface(X, Y, E,cmap='viridis')
     #fig.colorbar(surf, ax = ax,shrink = 0.5, aspect = 5)
     #ax.set_title('Erreur u''=2(x+y)')
     plt.show()
+    
+def l2_normP2D(n,m):
+    C=sol2D(n)
+    lesx=np.linspace(0,1,m)
+    lesy=np.linspace(0,1,m)
+    X,Y=np.meshgrid(lesx,lesy)
+    Z=np.zeros((m,m))
+    T=np.zeros((m,m))
+    E=np.zeros((m,m))
+    for i in range(m):
+        for j in range(m):
+            x=X[i][j]
+            y=Y[i][j]
+            if x+y<=1:
+                Z[i][j]+=deCasteljau2D((1-x-y,x,y),C,n)
+                T[i][j]+=x*y*(x+y-1)
+                E[i][j]+=abs(Z[i][j]-T[i][j])
+    E=E**2
+    error=np.sqrt(simps([simps(E_x,lesx) for E_x in E],lesy) )
+    print("{:.2e}".format(error))
+
+def l2_normP2D_dl(n,m):
+    C=sol2D(n)
+    e=lambda y,x: (x*y*(x+y-1)-deCasteljau2D((1-x-y,x,y),C,n))**2
+    E=np.sqrt(integrate.dblquad(e,0,1,lambda x: 0, lambda x: 1))
+    print(E)
