@@ -14,12 +14,14 @@ import matplotlib.pyplot as plt
 
 
 ##Binomial coeff, limited at 203
+## created in the file Precompute.py
 
 Bin=np.load("Binomial coeff.npy")
 
 
 
 # Storing points and weights of Gauss-Jacobi quadrature rule
+## created in the file Precompute.py
 quad0=np.load("jaccobi rule 0.npy",allow_pickle=True)
 quad1=np.load("jaccobi rule 1.npy",allow_pickle=True)
 quad2=np.load("jaccobi rule 2.npy",allow_pickle=True)
@@ -79,7 +81,7 @@ def sumVect(u,v):
         for i in range(n):
             w[i]=int(u[i]+v[i])
         return w
-
+## substracting tow vectors
 def Sub(u,v):
     m=len(u)
     n=len(v)
@@ -143,6 +145,23 @@ def grad3D(L):
 def indexes2D(n):
     return [(i,j, n-(i+j)) for i in range(n,-1, -1) for j in range(n-i, -1, -1)]
 
+def Time_indexes2D(N):
+    X=np.arange(1,N+1)
+    T=[]
+    C=[]
+    for n in X:
+        t0=timeit.default_timer()
+        l=indexes2D(n)
+        t1=timeit.default_timer()-t0
+        T.append(t1)
+        C.append(0.5*n**2)
+    plt.plot(X,T)
+    plt.plot(X,C)
+    plt.xscale('log')
+    plt.yscale('log')
+    plt.show()
+    
+
 ### 3D domaine points in lexicographic order
 
 def indexes3D(n):
@@ -188,7 +207,37 @@ def Moment1D(a,b,f,n):
             F[j]+=M[i][j]*f(xi)
         F[j]*=np.abs(b-a)*P[n][j]/2
     return F
-    
+
+#To calculate cpu time    
+def Moment1DT(a,b,f,n):
+    t0=timeit.default_timer()
+    M=D.item()[n]
+    [x,w]=quad0.item()[n+1]
+    F=np.zeros(n+1)
+    P=Bin
+    for j in range(n+1):
+        for i in range(n+1):
+            xi=a*((1+x[i])/2)+b*((1-x[i])/2)
+            F[j]+=M[i][j]*f(xi)
+        F[j]*=np.abs(b-a)*P[n][j]/2
+    t1=timeit.default_timer()-t0
+    return t1
+
+def CPU_Mom1D(a,b,f,N):
+    x=np.arange(1,N+1)
+    t=[]
+    c=[]
+    for n in x:
+        t.append(Moment1DT(a,b,f,n))
+        c.append(n**2)
+    plt.plot(x,t,'g',label="Moment 1D (precomp)")
+    plt.plot(x,c,'r',label="$n^2$")
+    plt.xscale('log')
+    plt.yscale('log')
+    plt.ylabel("CPU time (s)")
+    plt.legend()
+    plt.show()
+
 
 ## Tow dimensional sitting
 
@@ -228,13 +277,13 @@ def Eval2D(f,q,L):
 def Moment2D(L,f,n):
     t0= timeit.default_timer()
     T=AirT2D(L)
-    F=Eval2D(f, n+1, L)
+    F=Eval2D(f, n+1, L) ## O(n²)
     P=Bin
     A1=D1.item()[n]
     A2=D2.item()[n]
     B1=P1.item()[n]
     B2=P2.item()[n]
-    In=indexes2D(n)
+    In=indexes2D(n) ## O(n²)
     l=(n+2)*(n+1)//2
     Aux=np.zeros((n+1,n+1))
     
@@ -254,6 +303,53 @@ def Moment2D(L,f,n):
     t1=timeit.default_timer()-t0
     #print("Time elapsed: ", t1)
     return M
+
+
+### Calculating CPU time
+def Moment2DCPU(L,f,n):
+    t0= timeit.default_timer()
+    T=AirT2D(L)
+    F=Eval2D(f, n+1, L) ## O(n²)
+    P=Bin
+    A1=D1.item()[n]
+    A2=D2.item()[n]
+    B1=P1.item()[n]
+    B2=P2.item()[n]
+    In=indexes2D(n) ## O(n²)
+    l=(n+2)*(n+1)//2
+    Aux=np.zeros((n+1,n+1))
+    
+    for b1 in range(n+1):
+        for i1 in range(n+1):
+            for i2 in range(n+1):
+                Aux[b1][i2]+=A1[b1][i1]*B1[b1][i1]*F[i1][i2]
+    
+    M=np.zeros(l)
+    for j in range(l):
+        b1=In[j][0]
+        b2=In[j][1]
+        b3=In[j][2]
+        for i2 in range(n+1):
+            M[j]+=A2[b1+b2][i2]*B2[b2][i2]*Aux[b1][i2]
+        M[j]*=T*P[b1+b2][b2]*P[n][b3]/4
+    t1=timeit.default_timer()-t0
+    return t1
+
+def CPU_Mom2D(L,f,N):
+    x=np.arange(1,N+1)
+    t=[]
+    c=[]
+    for n in x:
+        t.append(Moment2DCPU(L, f, n))
+        c.append(n**3)
+    plt.plot(x,t,'g',label="Moment 2D (precomp)")
+    plt.plot(x,c,'r',label="$n^3$")
+    plt.xscale('log')
+    plt.yscale('log')
+    plt.ylabel("CPU time (s)")
+    plt.legend()
+    plt.show()
+
 
 ## 3D Moment
 
@@ -1218,8 +1314,74 @@ def l2_normP2D(n,m):
     error=np.sqrt(simps([simps(E_x,lesx) for E_x in E],lesy) )
     print("{:.2e}".format(error))
 
-def l2_normP2D_dl(n,m):
-    C=sol2D(n)
-    e=lambda y,x: (x*y*(x+y-1)-deCasteljau2D((1-x-y,x,y),C,n))**2
-    E=np.sqrt(integrate.dblquad(e,0,1,lambda x: 0, lambda x: 1))
-    print(E)
+## Poisson on the refernece rectangle -div(grad u)=2(x(1-x)+y(1-y)) , 
+## u=0 on the boundary, the exact sol is u(x,y)=xy(1-x)(1-y)
+
+def sol2D_2(n):
+    t0=timeit.default_timer()
+    K1=StiffMat2D([0,0,1,0,0,1], A, n)
+    B1=Moment2D([0,0,1,0,0,1], lambda x,y:2*(x*(1-x)+y*(1-y)), n)
+    K2=StiffMat2D([1,0,1,1,0,1], A, n)
+    B2=Moment2D([1,0,1,1,0,1], lambda x,y:2*(x*(1-x)+y*(1-y)), n)
+    L=indexes2D(n)
+    w=(n+1)*(n+2)//2
+    C=[]
+    Q=[]
+    for i in range(w-1,-1,-1):
+        if L[i][0]*L[i][1]*L[i][2]==0:
+            K1=np.delete(K1,i,axis=0)
+            K1=np.delete(K1,i,axis=1)
+            K2=np.delete(K2,i,axis=0)
+            K2=np.delete(K2,i,axis=1)
+            B1=np.delete(B1,i)
+            B2=np.delete(B2,i)
+            C.append(i)
+        else:
+            Q.append(i)
+    #print('K ',K)
+    #print('B ',B)
+    #print(C)
+    #print(Q)
+    K=K1+K2
+    B=B1+B2
+    X=np.array(np.linalg.solve(K,B))
+    #print(X)
+    t1=timeit.default_timer()-t0
+    #print("time elapsed ",t1))
+    Q.reverse()
+    f=len(Q)
+    BB=np.zeros(w)
+    for i in range(f):
+        BB[Q[i]]=X[i]
+    return BB
+
+def ploterror2D_2(n,m):
+    C=sol2D_2(n)
+    lesx=np.linspace(0,1,m)
+    lesy=np.linspace(0,1,m)
+    X,Y=np.meshgrid(lesx,lesy)
+    Z=np.zeros((m,m))
+    T=np.zeros((m,m))
+    E=np.zeros((m,m))
+    for i in range(m):
+        for j in range(m):
+            x=X[i][j]
+            y=Y[i][j]            
+            Z[i][j]+=deCasteljau2D((1-x-y,x,y),C,n)
+            T[i][j]+=x*y*(1-x)*(1-y)
+            E[i][j]+=abs(Z[i][j]-T[i][j])
+    fig=plt.figure(figsize=(6,5))
+    left, bottom, width, height = 0.1, 0.1, 0.8, 0.8
+    ax=fig.add_axes([left, bottom, width, height]) 
+    cp = plt.contourf(X, Y, E)
+    plt.colorbar(cp)
+    ax.set_title('Error of poisson 2D where $n=$'+str(n))
+    #ax.set_xlabel('x')
+    #ax.set_ylabel('y')
+    #fig = plt.figure(figsize =(14, 9))
+    #ax = plt.axes(projection='3d')
+    #ax.plot_surface(X, Y, Z)
+    #surf=ax.plot_surface(X, Y, E,cmap='viridis')
+    #fig.colorbar(surf, ax = ax,shrink = 0.5, aspect = 5)
+    #ax.set_title('Erreur u''=2(x+y)')
+    plt.show()

@@ -9,7 +9,7 @@ import numpy as np
 
 import scipy.special 
 
-n=110 
+n=120 
 
 l=dict()
 
