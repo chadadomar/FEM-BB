@@ -5,6 +5,8 @@ from scipy import integrate
 import timeit
 import matplotlib.pyplot as plt
 #np.seterr(all='warn')
+import meshpy.triangle as triangle
+import math
 
 
 
@@ -72,6 +74,7 @@ def grad2D(L):
     return np.array([v1,v2,v3])
 
 def sumVect(u,v):
+    
     m=len(u)
     n=len(v)
     if n!=m:
@@ -275,7 +278,6 @@ def Eval2D(f,q,L):
 ### Moment approximation
 
 def Moment2D(L,f,n):
-    t0= timeit.default_timer()
     T=AirT2D(L)
     F=Eval2D(f, n+1, L) ## O(n²)
     P=Bin
@@ -300,8 +302,6 @@ def Moment2D(L,f,n):
         for i2 in range(n+1):
             M[j]+=A2[b1+b2][i2]*B2[b2][i2]*Aux[b1][i2]
         M[j]*=T*P[b1+b2][b2]*P[n][b3]/4
-    t1=timeit.default_timer()-t0
-    #print("Time elapsed: ", t1)
     return M
 
 
@@ -391,6 +391,49 @@ B1=np.load("Precomp B1.npy",allow_pickle=True)
 
 
 def Moment3D(L,f,n):
+    T=AirT3D(L)
+    F=Eval3D(f, n+1, L)
+    P=Bin
+    Z1=A1.item()[n]
+    Z2=D1.item()[n]
+    Z3=D2.item()[n]
+    Y1=B1.item()[n]
+    Y2=P1.item()[n]
+    Y3=P2.item()[n]
+    In=indexes3D(n)
+    l=len(In)
+    
+    H=np.zeros((n+1,n+1,n+1))  
+    
+    for b1 in range(n+1):
+        for i1 in range(n+1):
+            w=Z1[b1][i1]*Y1[b1][i1]
+            for i2 in range(n+1):
+                for i3 in range(n+1):
+                    H[b1][i2][i3]+=w*F[i1][i2][i3]
+                    
+    U=np.zeros((n+1,n+1,n+1))
+    
+    for b1 in range(n+1):
+        for b2 in range(n+1-b1):
+            for i2 in range(n+1):
+                w=Z2[b1+b2][i2]*Y2[b2][i2]
+                for i3 in range(n+1):
+                    U[b1][b2][i3]+=w*H[b1][i2][i3]
+    
+    M=np.zeros(l)
+    for j in range(l):
+        b1=In[j][0]
+        b2=In[j][1]
+        b3=In[j][2]
+        b4=In[j][3]
+        for i3 in range(n+1):
+            M[j]+=Z3[b1+b2+b3][i3]*Y3[b3][i3]*U[b1][b2][i3]
+        M[j]*=3*T*P[b1+b2][b2]*P[b1+b2+b3][b3]*P[n][b4]/32
+    return M
+
+
+def Moment3DCPU(L,f,n):
     t0=timeit.default_timer()
     T=AirT3D(L)
     F=Eval3D(f, n+1, L)
@@ -432,8 +475,23 @@ def Moment3D(L,f,n):
             M[j]+=Z3[b1+b2+b3][i3]*Y3[b3][i3]*U[b1][b2][i3]
         M[j]*=3*T*P[b1+b2][b2]*P[b1+b2+b3][b3]*P[n][b4]/32
     t1=timeit.default_timer()-t0
-    #print("time elapsed ",t1)
-    return M
+    return t1
+
+def CPU_Mom3D(L,f,N):
+    x=np.arange(1,N+1)
+    t=[]
+    c=[]
+    for n in x:
+        t.append(Moment3DCPU(L, f, n))
+        c.append(n**4)
+    plt.plot(x,t,'g',label="Moment 3D (precomp)")
+    plt.plot(x,c,'r',label="$n^4$")
+    plt.xscale('log')
+    plt.yscale('log')
+    plt.ylabel("CPU time (s)")
+    plt.legend()
+    plt.show()
+
 
 # Constant Data
 ## mass matrix
@@ -444,7 +502,7 @@ def CstMassMat1D(n,T):
         ## n polynomial degree
         ## T interval lenth
     # Output:
-        # Mass matrix M_{i,j}=(Bn,i;Bn,j)
+        ## Mass matrix M_{i,j}=(Bn,i;Bn,j)
     P=Bin
     M=np.zeros((n+1,n+1))
     for a1 in range(n+1):
@@ -456,6 +514,11 @@ def CstMassMat1D(n,T):
 ## 2D
 
 def CstMassMat2D(n,T):
+    # input: 
+        ## n polynomial degree
+        ## T triangle area
+    # Output:
+        ## Mass matrix M_{i,j}=(Bn,i;Bn,j)
     t0=timeit.default_timer()
     In=indexes2D(n)
     l=len(In)
@@ -481,6 +544,11 @@ def CstMassMat2D(n,T):
 ## 3D
 
 def CstMassMat3D(n,T):
+    # input: 
+        ## n polynomial degree
+        ## T tetrahedron area
+    # Output:
+        #€# Mass matrix M_{i,j}=(Bn,i;Bn,j)
     t0=timeit.default_timer()
     In=indexes3D(n)
     l=len(In)
@@ -511,6 +579,12 @@ def CstMassMat3D(n,T):
 ## 1D
 
 def cst_StiffMat_1D(L,n,A):
+    # input: 
+        ## n polynomial degree
+        ## L the interval L=(a,b)
+        ## A matrix-valued function
+    # Output:
+        ## Stiffness matrix S_{i,j}=(A grad(Bn,i);grad(Bn,j))
     T=abs(L[0]-L[1])
     M=CstMassMat1D(n-1, T)
     s=n*n*A*grad1D(L)
@@ -527,6 +601,12 @@ def cst_StiffMat_1D(L,n,A):
 ##2D
     
 def cst_StiffMat_2D(L,A,n):
+    # input: 
+        ## n polynomial degree
+        ## L the triangle simplex [x1,y1,x2,y2,x3,y3] orderd counter-clockwise
+        ## A matrix-valued function
+    # Output:
+        ## Stiffness matrix S_{i,j}=(A grad(Bn,i);grad(Bn,j))
     t0=timeit.default_timer()
     T=AirT2D(L)
     M=CstMassMat2D(n-1, T)
@@ -561,6 +641,12 @@ def cst_StiffMat_2D(L,A,n):
 ## 3D  
 
 def cst_StiffMat_3D(L,A,n):
+    # input: 
+        ## n polynomial degree
+        ## L the tetrahedron simplex [x1,y1,x2,y2,x3,y3,x4,y4] orderd counter-clockwise
+        ## A matrix-valued function
+    # Output:
+        ## Stiffness matrix S_{i,j}=(A grad(Bn,i);grad(Bn,j))
     t0=timeit.default_timer()
     T=AirT3D(L)
     M=CstMassMat3D(n-1, T)
@@ -598,6 +684,12 @@ def cst_StiffMat_3D(L,A,n):
 
 ## 1D
 def cst_ConvMat_1D(L,n,b):
+    # input: 
+        ## L the intervalle L=(a,b)
+        ## n polynomial degree
+        ## b vector-valued function
+    # Output:
+        ## Convective matrix V_{i,j}=(Bn,i; b.grad(Bn,j))
     P=Bin
     [u,v]=L
     T=abs(u-v)
@@ -619,6 +711,12 @@ def cst_ConvMat_1D(L,n,b):
 ##2D 
 
 def cst_ConvMat_2D(L,n,b):
+    # input: 
+        ## L the triangle simplex [x1,y1,x2,y2,x3,y3] orderd counter-clockwise
+        ## n polynomial degree
+        ## b vector-valued function
+    # Output:
+        ## Convective matrix V_{i,j}=(Bn,i; b.grad(Bn,j))
     P=Bin
     T=AirT2D(L)
     G=grad2D(L)
@@ -647,6 +745,12 @@ def cst_ConvMat_2D(L,n,b):
 ## 3D
 
 def cst_ConvMat_3D(L,n,b):
+    # input: 
+        ## L the tetrahedon simplex [x1,y1,x2,y2,x3,y3] orderd counter-clockwise
+        ## n polynomial degree
+        ## b vector-valued function
+    # Output:
+        ## Convective matrix V_{i,j}=(Bn,i; b.grad(Bn,j))
     P=Bin
     T=AirT3D(L)
     G=grad3D(L)
@@ -967,15 +1071,15 @@ def Conv3D(L,f,n):
 
 #Evaluation of BB
 
-## 1 dimension
+## 1 dimension 
 
-def deCasteljau1D(t, coefs):
-    beta = [c for c in coefs]
-    n = len(beta)
+def deCasteljau1D(t, coefs): ### In the intervalle (0,1), in (a,b) we consider y=(x-a)/(b-a)
+    C = [c for c in coefs]
+    n = len(C)
     for j in range(1, n):
         for k in range(n - j):
-            beta[k] = beta[k] * (1 - t) + beta[k + 1] * t
-    return beta[0]
+            C[k] = C[k] * (1 - t) + C[k + 1] * t
+    return C[0]
 
 ## 2 dimension
 ### lam: barycentrique cordinate of the point
@@ -1005,383 +1109,4 @@ def deCasteljau2D(lam,BB,n):
 
 
 
-# Tests:
-    
-## change font size in plot:
-plt.rcParams.update({'font.size': 20})
-
-## Poisson 1D :  -u"=1 on [0,1], u(0)=u(1)=0 
-def poisson1D(n):
-    # return the BB vector of the solution, taking in account boundary condition
-    K=cst_StiffMat_1D([0,1],n,1)
-    K=np.delete(K,n,axis=0)
-    K=np.delete(K,n,axis=1)
-    K=np.delete(K,0,axis=0)
-    K=np.delete(K,0,axis=1)
-    B=Moment1D(0, 1, lambda x: 1, n)
-    B=np.delete(B,n)
-    B=np.delete(B,0)
-    X=np.linalg.solve(K,B)
-    return X
-## The exacte solution is given by u(x)=x(1-x)/2
-def plotpoisson1D(n,m):
-    lesx=np.linspace(0,1,m)
-    C=np.zeros(n+1)
-    C[1:n]=poisson1D(n)
-    print(C)
-    lesy=[]
-    In=[]
-    for x in lesx:
-        lesy.append(deCasteljau1D(x,C))
-        In.append((x-x*x)/2)
-    plt.title(r"poisson 1D: $-u^{''}(x)=1; \, u(0)=u(1)=0$")
-    plt.plot(lesx,lesy,'r',label="approx")
-    plt.plot(lesx,In, 'g', label="exact")
-    plt.legend()
-    plt.show()
-    
-def plotpoisson1dError(n,m):
-    lesx=np.linspace(0,1,m)
-    C=np.zeros(n+1)
-    C[1:n]=poisson1D(n)
-    print(C)
-    lesy=[]
-    for x in lesx:
-        lesy.append(deCasteljau1D(x,C)-x*(1-x)/2)
-    plt.title(r"$-u^{''}(x)=1; \, u(0)=u(1)=0$ , $n=$"+str(n))
-    plt.plot(lesx,lesy,'r',label="error")
-    plt.legend()
-    plt.show()
-    
-def L2_normErrorP1D(n,m):
-    lesx=np.linspace(0,1,m)
-    C=np.zeros(n+1)
-    C[1:n]=poisson1D(n)
-    print(C)
-    lesy=[]
-    for x in lesx:
-        lesy.append(deCasteljau1D(x,C)-x*(1-x)/2)
-    e=np.array(lesy)
-    e=e**2
-    x=np.array(lesx)
-    E=np.sqrt(0.5*np.sum((e[:-1] + e[1:])*(x[1:] - x[:-1])))
-    print("{:.2e}".format(E))
- 
-## Exemple u'=1 , u(0)=0, sol exacte u(x)=x
-
-def Ex1(n):
-    V=cst_ConvMat_1D([0,1],n,1)
-    V=np.delete(V,n,axis=0)
-    V=np.delete(V,n,axis=1)
-    B=Moment1D(0, 1, lambda x: 1, n)
-    B=np.delete(B,n)
-    X=np.linalg.solve(V,B)
-    return X
-
-def plotEx1(n,m):
-    lesx=np.linspace(0,1,m)
-    C=np.zeros(n+1)
-    C[1:n+1]=Ex1(n)
-    print(C)
-    lesy=[]
-    for x in lesx:
-        lesy.append(deCasteljau1D(x,C))
-    plt.title(r"$u'(x)=1$ et $u(0)=0$")
-    plt.plot(lesx,lesy,label="approx")
-    plt.plot(lesx,lesx,label="exacte")
-    plt.legend()
-    plt.show()
-    
-def plotEx1Error(n,m):
-    lesx=np.linspace(0,1,m)
-    C=np.zeros(n+1)
-    C[1:n+1]=Ex1(n)
-    print(C)
-    lesy=[]
-    for x in lesx:
-        lesy.append(deCasteljau1D(x,C)-x)
-    plt.title(r"$u'(x)=1$ et $u(0)=0$ where $n$="+str(n))
-    plt.plot(lesx,lesy,label="error")
-    plt.legend()
-    #plt.xlim(0,1)
-    #plt.ylim(-1, 1)
-    plt.show()
-
-def L2_normErrorEx1(n,m):
-    lesx=np.linspace(0,1,m)
-    C=np.zeros(n+1)
-    C[1:n+1]=Ex1(n)
-    print(C)
-    lesy=[]
-    for x in lesx:
-        lesy.append(deCasteljau1D(x,C)-x)
-    e=np.array(lesy)
-    e=e**2
-    x=np.array(lesx)
-    E=np.sqrt(0.5*np.sum((e[:-1] + e[1:])*(x[1:] - x[:-1])))
-    print("{:.2e}".format(E))
-    
-## Another exemple: -u"+u=1 on (0,1), u(0)=u(1)=0
-
-def Ex2(n):
-    K=cst_StiffMat_1D([0,1],n,1)
-    K=np.delete(K,n,axis=0)
-    K=np.delete(K,n,axis=1)
-    K=np.delete(K,0,axis=0)
-    K=np.delete(K,0,axis=1)
-    V=cst_ConvMat_1D([0,1],n,1)
-    V=np.delete(V,n,axis=0)
-    V=np.delete(V,n,axis=1)
-    V=np.delete(V,0,axis=0)
-    V=np.delete(V,0,axis=1)
-    B=Moment1D(0, 1, lambda x: 1, n)
-    B=np.delete(B,n)
-    B=np.delete(B,0)
-    X=np.linalg.solve(K+V,B)
-    return X
-
-# the exacte solution of the above equation
-def exact(x):
-    A=1/(1-np.exp(1))
-    return A*(np.exp(x)-1)+x
-
-def plotEx2Error(n,m):
-    lesx=np.linspace(0,1,m)
-    C=np.zeros(n+1)
-    C[1:n]=Ex2(n)
-    print(C)
-    lesy=[]
-    for x in lesx:
-        lesy.append(deCasteljau1D(x,C)-exact(x))
-    plt.title("Error $-u^{''}+u=1$ wher $n=$"+str(n))
-    plt.plot(lesx,lesy,"r",label="aprox")
-    plt.legend()
-    plt.show()
-
-def L2_normErrorEx2(n,m):
-    lesx=np.linspace(0,1,m)
-    C=np.zeros(n+1)
-    C[1:n]=Ex2(n)
-    print(C)
-    lesy=[]
-    for x in lesx:
-        lesy.append(deCasteljau1D(x,C)-exact(x))
-    e=np.array(lesy)
-    e=e**2
-    x=np.array(lesx)
-    E=np.sqrt(0.5*np.sum((e[:-1] + e[1:])*(x[1:] - x[:-1])))
-    print("{:.2e}".format(E))
-
-
-
-#2D 
-## Poisson equation  div( grad u)=2(x+y), u=0 on the boundary of the 
-## reference triangle
-
-# matrix in the variational formula
-def A(x,y):
-    return np.array([[1,0],[1,0]])
-
-# Return The BB-vector of the FEM-solution
-def sol2D(n):
-    t0=timeit.default_timer()
-    K=StiffMat2D([0,0,1,0,0,1], A, n)
-    B=Moment2D([0,0,1,0,0,1], lambda x,y:-2*(x+y), n)
-    L=indexes2D(n)
-    w=(n+1)*(n+2)//2
-    C=[]
-    Q=[]
-    for i in range(w-1,-1,-1):
-        if L[i][0]*L[i][1]*L[i][2]==0:
-            K=np.delete(K,i,axis=0)
-            K=np.delete(K,i,axis=1)
-            B=np.delete(B,i)
-            C.append(i)
-        else:
-            Q.append(i)
-    #print('K ',K)
-    #print('B ',B)
-    #print(C)
-    #print(Q)
-    X=np.array(np.linalg.solve(K,B))
-    #print(X)
-    t1=timeit.default_timer()-t0
-    #print("time elapsed ",t1))
-    Q.reverse()
-    f=len(Q)
-    BB=np.zeros(w)
-    for i in range(f):
-        BB[Q[i]]=X[i]
-    return BB
-
-
-def plotpoisson2D(n,m):
-    C=sol2D(n)
-    lesx=np.linspace(0,1,m)
-    lesy=np.linspace(0,1,m)
-    X,Y=np.meshgrid(lesx,lesy)
-    Z=np.zeros((m,m))
-    T=np.zeros((m,m))
-    E=np.zeros((m,m))
-    for i in range(m):
-        for j in range(m):
-            x=X[i][j]
-            y=Y[i][j]
-            if x+y<=1:
-                Z[i][j]+=deCasteljau2D((1-x-y,x,y),C,n)
-                T[i][j]+=x*y*(x+y-1)
-                E[i][j]+=abs(Z[i][j]-T[i][j])
-    fig = plt.figure(figsize =(14, 9))
-    ax = plt.axes(projection='3d')
-    #ax.plot_surface(X, Y, Z)
-    surf=ax.plot_surface(X, Y, Z,cmap='viridis')
-    #fig.colorbar(surf, ax = ax,shrink = 0.5, aspect = 5)
-    #ax.set_title('Erreur u''=2(x+y)')
-    plt.show()
-        
-
-## Exact sol is given by u(x,y)=x*y(x+y-1)
-def plotexact2D(m):
-    lesx=np.linspace(0,1,m)
-    lesy=np.linspace(0,1,m)
-    X,Y=np.meshgrid(lesx,lesy)
-    Z=np.zeros((m,m))
-    T=np.zeros((m,m))
-    E=np.zeros((m,m))
-    for i in range(m):
-        for j in range(m):
-            x=X[i][j]
-            y=Y[i][j]
-            if x+y<=1:
-                T[i][j]+=x*y*(x+y-1)
-    fig = plt.figure(figsize =(14, 9))
-    ax = plt.axes(projection='3d')
-    #ax.plot_surface(X, Y, Z)
-    surf=ax.plot_surface(X, Y, T,cmap='viridis')
-    #fig.colorbar(surf, ax = ax,shrink = 0.5, aspect = 5)
-    #ax.set_title('Erreur u''=2(x+y)')
-    plt.show()
-
-def ploterror2D(n,m):
-    C=sol2D(n)
-    lesx=np.linspace(0,1,m)
-    lesy=np.linspace(0,1,m)
-    X,Y=np.meshgrid(lesx,lesy)
-    Z=np.zeros((m,m))
-    T=np.zeros((m,m))
-    E=np.zeros((m,m))
-    for i in range(m):
-        for j in range(m):
-            x=X[i][j]
-            y=Y[i][j]
-            if x+y<=1:
-                Z[i][j]+=deCasteljau2D((1-x-y,x,y),C,n)
-                T[i][j]+=x*y*(x+y-1)
-                E[i][j]+=abs(Z[i][j]-T[i][j])
-    fig=plt.figure(figsize=(6,5))
-    left, bottom, width, height = 0.1, 0.1, 0.8, 0.8
-    ax=fig.add_axes([left, bottom, width, height]) 
-    cp = plt.contourf(X, Y, E)
-    plt.colorbar(cp)
-    ax.set_title('Error of poisson 2D where $n=$'+str(n))
-    #ax.set_xlabel('x')
-    #ax.set_ylabel('y')
-    #fig = plt.figure(figsize =(14, 9))
-    #ax = plt.axes(projection='3d')
-    #ax.plot_surface(X, Y, Z)
-    #surf=ax.plot_surface(X, Y, E,cmap='viridis')
-    #fig.colorbar(surf, ax = ax,shrink = 0.5, aspect = 5)
-    #ax.set_title('Erreur u''=2(x+y)')
-    plt.show()
-    
-def l2_normP2D(n,m):
-    C=sol2D(n)
-    lesx=np.linspace(0,1,m)
-    lesy=np.linspace(0,1,m)
-    X,Y=np.meshgrid(lesx,lesy)
-    Z=np.zeros((m,m))
-    T=np.zeros((m,m))
-    E=np.zeros((m,m))
-    for i in range(m):
-        for j in range(m):
-            x=X[i][j]
-            y=Y[i][j]
-            if x+y<=1:
-                Z[i][j]+=deCasteljau2D((1-x-y,x,y),C,n)
-                T[i][j]+=x*y*(x+y-1)
-                E[i][j]+=abs(Z[i][j]-T[i][j])
-    E=E**2
-    error=np.sqrt(simps([simps(E_x,lesx) for E_x in E],lesy) )
-    print("{:.2e}".format(error))
-
-## Poisson on the refernece rectangle -div(grad u)=2(x(1-x)+y(1-y)) , 
-## u=0 on the boundary, the exact sol is u(x,y)=xy(1-x)(1-y)
-
-def sol2D_2(n):
-    t0=timeit.default_timer()
-    K1=StiffMat2D([0,0,1,0,0,1], A, n)
-    B1=Moment2D([0,0,1,0,0,1], lambda x,y:2*(x*(1-x)+y*(1-y)), n)
-    K2=StiffMat2D([1,0,1,1,0,1], A, n)
-    B2=Moment2D([1,0,1,1,0,1], lambda x,y:2*(x*(1-x)+y*(1-y)), n)
-    L=indexes2D(n)
-    w=(n+1)*(n+2)//2
-    C=[]
-    Q=[]
-    for i in range(w-1,-1,-1):
-        if L[i][0]*L[i][1]*L[i][2]==0:
-            K1=np.delete(K1,i,axis=0)
-            K1=np.delete(K1,i,axis=1)
-            K2=np.delete(K2,i,axis=0)
-            K2=np.delete(K2,i,axis=1)
-            B1=np.delete(B1,i)
-            B2=np.delete(B2,i)
-            C.append(i)
-        else:
-            Q.append(i)
-    #print('K ',K)
-    #print('B ',B)
-    #print(C)
-    #print(Q)
-    K=K1+K2
-    B=B1+B2
-    X=np.array(np.linalg.solve(K,B))
-    #print(X)
-    t1=timeit.default_timer()-t0
-    #print("time elapsed ",t1))
-    Q.reverse()
-    f=len(Q)
-    BB=np.zeros(w)
-    for i in range(f):
-        BB[Q[i]]=X[i]
-    return BB
-
-def ploterror2D_2(n,m):
-    C=sol2D_2(n)
-    lesx=np.linspace(0,1,m)
-    lesy=np.linspace(0,1,m)
-    X,Y=np.meshgrid(lesx,lesy)
-    Z=np.zeros((m,m))
-    T=np.zeros((m,m))
-    E=np.zeros((m,m))
-    for i in range(m):
-        for j in range(m):
-            x=X[i][j]
-            y=Y[i][j]            
-            Z[i][j]+=deCasteljau2D((1-x-y,x,y),C,n)
-            T[i][j]+=x*y*(1-x)*(1-y)
-            E[i][j]+=abs(Z[i][j]-T[i][j])
-    fig=plt.figure(figsize=(6,5))
-    left, bottom, width, height = 0.1, 0.1, 0.8, 0.8
-    ax=fig.add_axes([left, bottom, width, height]) 
-    cp = plt.contourf(X, Y, E)
-    plt.colorbar(cp)
-    ax.set_title('Error of poisson 2D where $n=$'+str(n))
-    #ax.set_xlabel('x')
-    #ax.set_ylabel('y')
-    #fig = plt.figure(figsize =(14, 9))
-    #ax = plt.axes(projection='3d')
-    #ax.plot_surface(X, Y, Z)
-    #surf=ax.plot_surface(X, Y, E,cmap='viridis')
-    #fig.colorbar(surf, ax = ax,shrink = 0.5, aspect = 5)
-    #ax.set_title('Erreur u''=2(x+y)')
-    plt.show()
+### Evaluation 3D TODO 
