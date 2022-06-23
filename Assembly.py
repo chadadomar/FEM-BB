@@ -1,12 +1,12 @@
 import numpy as np
-from scipy.integrate import simps
-from scipy import integrate
+#from scipy.integrate import simps
+#from scipy import integrate
 #import scipy.special
 import timeit
 import matplotlib.pyplot as plt
 #np.seterr(all='warn')
-import meshpy.triangle as triangle
-import math
+#import meshpy.triangle as triangle
+
 
 
 
@@ -74,7 +74,6 @@ def grad2D(L):
     return np.array([v1,v2,v3])
 
 def sumVect(u,v):
-    
     m=len(u)
     n=len(v)
     if n!=m:
@@ -107,7 +106,7 @@ def ScalarProd(u,v):
             w+=u[i]*v[i]
         return w
 
-def CrossProd3D(u,v):
+def CrossProd3d(u,v):
     w=np.zeros(3)
     w[0]=u[1]*v[2]-u[2]*v[1]
     w[1]=u[2]*v[0]-u[0]*v[2]
@@ -115,16 +114,17 @@ def CrossProd3D(u,v):
     return w
     
 def Inter(u,v,w):
+    #needed for calculating gradiant when d=3
     sub1=Sub(u,v)
     sub2=Sub(v,w)
-    return 0.5*CrossProd3D(sub1, sub2)
+    return 0.5*CrossProd3d(sub1, sub2)
 
 def AirT3D(L):
     [x1,y1,z1,x2,y2,z2,x3,y3,z3,x4,y4,z4]=L
     u=np.array([x1-x4,y1-y4,z1-z4])
     v=np.array([x2-x4,y2-y4,z2-z4])
     w=np.array([x3-x4,y3-y4,z3-z4])
-    cross=CrossProd3D(v, w)
+    cross=CrossProd3d(v, w)
     T=ScalarProd(u, cross)
     return abs(T)/6 
 
@@ -144,7 +144,6 @@ def grad3D(L):
     return np.array([Res1,Res2,Res3,Res4])
 
 ### 2D domaine points in lexicographic order
-
 def indexes2D(n):
     return [(i,j, n-(i+j)) for i in range(n,-1, -1) for j in range(n-i, -1, -1)]
 
@@ -163,7 +162,12 @@ def Time_indexes2D(N):
     plt.xscale('log')
     plt.yscale('log')
     plt.show()
-    
+
+def getIndex2D(n,t):
+    #n : polynomial order
+    #t : index of the domain point (also polynomial index)
+    (i,j,k)=t
+    return int((n-i)*(n-i+1)//2+n-i-j)  
 
 ### 3D domaine points in lexicographic order
 
@@ -171,14 +175,8 @@ def indexes3D(n):
     return [(i,j,k, n-(i+j+k)) for i in range(n,-1, -1) for j in range(n-i, -1, -1) for k in range(n-i-j,-1,-1)]
 
 
-def getIndex2D(n,t):
-    #n : number of domain point (also polynomial order)
-    #t : index of the domain point (also polynomial index)
-    (i,j,k)=t
-    return int((n-i)*(n-i+1)//2+n-i-j)
-
 def getIndex3D(n,t):
-    #n : number of domain point (also polynomial order)
+    #n : polynomial order
     #t : index of the domain point (also polynomial index)
     (i,j,k,l)=t
     if i==n:
@@ -192,7 +190,7 @@ def getIndex3D(n,t):
 # Bernestein-Bézier moment
 
 
-## One dimentional setting
+## One dimentional setting  d=1
 ###  Vector D: neded after Gauss_Jaccobi quadrature rule
 
 D=np.load("Precomp D.npy",allow_pickle=True)
@@ -200,6 +198,12 @@ D=np.load("Precomp D.npy",allow_pickle=True)
 ### Moment approximation
 
 def Moment1D(a,b,f,n):
+    #input:
+        # a,b : intervall limits
+        # f : real valued function
+        # n : bernstein ploynomial degree
+    #Output:
+        # array of BB-moment : [intgral f*B_{n-i,n} for  0 <= i <= n ] (lexico-graphical order)
     M=D.item()[n]
     [x,w]=quad0.item()[n+1]
     F=np.zeros(n+1)
@@ -242,7 +246,7 @@ def CPU_Mom1D(a,b,f,N):
     plt.show()
 
 
-## Tow dimensional sitting
+## Tow dimensional sitting  d=2
 
 ### precomputed array 
 D1=np.load("Precomp D1.npy",allow_pickle=True)
@@ -351,7 +355,7 @@ def CPU_Mom2D(L,f,N):
     plt.show()
 
 
-## 3D Moment
+## 3D Moment  d=3
 
 ### Evaluation of f at q^3 point quadrature
 
@@ -493,6 +497,8 @@ def CPU_Mom3D(L,f,N):
     plt.show()
 
 
+# Finite element assembly
+
 # Constant Data
 ## mass matrix
 ### 1D
@@ -502,7 +508,7 @@ def CstMassMat1D(n,T):
         ## n polynomial degree
         ## T interval lenth
     # Output:
-        ## Mass matrix M_{i,j}=(Bn,i;Bn,j)
+        ## Mass matrix M_{i,j}=(Bn,i;Bn,j) (lexicographical order)
     P=Bin
     M=np.zeros((n+1,n+1))
     for a1 in range(n+1):
@@ -582,7 +588,7 @@ def cst_StiffMat_1D(L,n,A):
     # input: 
         ## n polynomial degree
         ## L the interval L=(a,b)
-        ## A matrix-valued function
+        ## A 1D matrix (constant)
     # Output:
         ## Stiffness matrix S_{i,j}=(A grad(Bn,i);grad(Bn,j))
     T=abs(L[0]-L[1])
@@ -604,7 +610,7 @@ def cst_StiffMat_2D(L,A,n):
     # input: 
         ## n polynomial degree
         ## L the triangle simplex [x1,y1,x2,y2,x3,y3] orderd counter-clockwise
-        ## A matrix-valued function
+        ## A 2D matrix
     # Output:
         ## Stiffness matrix S_{i,j}=(A grad(Bn,i);grad(Bn,j))
     t0=timeit.default_timer()
@@ -644,7 +650,7 @@ def cst_StiffMat_3D(L,A,n):
     # input: 
         ## n polynomial degree
         ## L the tetrahedron simplex [x1,y1,x2,y2,x3,y3,x4,y4] orderd counter-clockwise
-        ## A matrix-valued function
+        ## A 3D matrix
     # Output:
         ## Stiffness matrix S_{i,j}=(A grad(Bn,i);grad(Bn,j))
     t0=timeit.default_timer()
@@ -687,13 +693,13 @@ def cst_ConvMat_1D(L,n,b):
     # input: 
         ## L the intervalle L=(a,b)
         ## n polynomial degree
-        ## b vector-valued function
+        ## b 1D vector (constant)
     # Output:
-        ## Convective matrix V_{i,j}=(Bn,i; b.grad(Bn,j))
+        ## Convective matrix V_{i,j}=(grad(Bn,i),Bn,jb)
     P=Bin
     [u,v]=L
     T=abs(u-v)
-    r=0.5*T/P[2*n-1][n]
+    r=-0.5*T/P[2*n-1][n]
     v1=r*b/(u-v)
     v2=r*b/(v-u)
     V=np.zeros((n+1,n+1))
@@ -714,12 +720,12 @@ def cst_ConvMat_2D(L,n,b):
     # input: 
         ## L the triangle simplex [x1,y1,x2,y2,x3,y3] orderd counter-clockwise
         ## n polynomial degree
-        ## b vector-valued function
+        ## b 2D vector 
     # Output:
         ## Convective matrix V_{i,j}=(Bn,i; b.grad(Bn,j))
     P=Bin
     T=AirT2D(L)
-    G=grad2D(L)
+    G=-grad2D(L)
     r=n*T/(P[2*n-1][n]*P[2*n+1][2])
     s=np.zeros(3)
     for i in range(3):
@@ -748,7 +754,7 @@ def cst_ConvMat_3D(L,n,b):
     # input: 
         ## L the tetrahedon simplex [x1,y1,x2,y2,x3,y3] orderd counter-clockwise
         ## n polynomial degree
-        ## b vector-valued function
+        ## b 3D vector
     # Output:
         ## Convective matrix V_{i,j}=(Bn,i; b.grad(Bn,j))
     P=Bin
@@ -915,7 +921,7 @@ def StiffMat2D(L,A,n):
 
 ### 3D
 
-def StiffMat3D(L,A,n):
+def StiffMat3D(L,A,n):  ## !!!!! there is a problem here !!!!!
     # A is a 3*3 matrix valued function
     G=grad3D(L)
     l=n*(2*n+1)*(2*n-1)//3
@@ -970,13 +976,13 @@ def StiffMat3D(L,A,n):
 
 ### 1D 
 
-def Conv1D(a,b,f,n,q):
+def Conv1D(a,b,f,n):
     v=[1/(a-b),1/(b-a)]
     P=Bin
     H=np.zeros((2*n,2))
     for b in range(2*n):
         for i in range(2):
-            H[b][i]+=v[i]*(Moment1D(a, b, f, n, q)[b])
+            H[b][i]+=v[i]*(Moment1D(a, b, f, 2*n)[b])
             
     V=np.zeros((n+1,n+1))
     for i in range(n):
@@ -994,7 +1000,7 @@ def Conv1D(a,b,f,n,q):
 def Conv2D(L,f,n):
     # f is a 2dimensional vector valued function
     P=Bin
-    G=grad2D(L)
+    G=-grad2D(L)
     l=n*(2*n+1)
     
     M1=np.zeros((l,2))
@@ -1073,7 +1079,7 @@ def Conv3D(L,f,n):
 
 ## 1 dimension 
 
-def deCasteljau1D(t, coefs): ### In the intervalle (0,1), in (a,b) we consider y=(x-a)/(b-a)
+def deCasteljau1D(t, coefs): ### In the intervalle (0,1), in (a,b) we consider t=(x-a)/(b-a)
     C = [c for c in coefs]
     n = len(C)
     for j in range(1, n):
@@ -1108,5 +1114,391 @@ def deCasteljau2D(lam,BB,n):
         return C[0]
 
 
-
 ### Evaluation 3D TODO 
+        
+#Testing examples:
+        
+# Tests:
+    
+## change font size in plot:
+plt.rcParams.update({'font.size': 20})
+
+## Poisson 1D :  -u"=1 on [a,b], u(a)=u(b)=0 
+def poisson1D(a,b,n):
+    #Input:
+        # a,b : interval limits
+        # n : polynomial order
+    # return the BB vector of the solution, taking in account boundary condition
+    K=cst_StiffMat_1D([a,b],n,1)
+    K=np.delete(K,n,axis=0)
+    K=np.delete(K,n,axis=1)
+    K=np.delete(K,0,axis=0)
+    K=np.delete(K,0,axis=1)
+    B=Moment1D(a, b, lambda x: 1, n)
+    B=np.delete(B,n)
+    B=np.delete(B,0)
+    X=np.linalg.solve(K,B)
+    return X
+
+def poisson1Dmesh(a,b,n,m):
+    #Input:
+        # a,b : interval limits
+        # n : polynomial order
+        # m : number elements ( sub-intervals)
+    # return the BB vector of the solution, taking in account boundary condition
+    mesh=np.linspace(a,b,m)
+    nnod=n*(m-1)
+    d=dict() # keys are physical cordinates and values are the index in the global mesh
+    for i in range(nnod):
+        k=i//n
+        r=(i%n)/n
+        ai=mesh[k]
+        bi=mesh[k+1]
+        coord=ai*(1-r)+r*bi
+        d[coord]=i
+    d[b]=nnod
+    
+    # assembling global stiffness matrix and load vector
+    K=np.zeros((nnod+1,nnod+1))
+    B=np.zeros(nnod+1)
+    for i in range(m-1):
+        ai=mesh[i]
+        bi=mesh[i+1]
+        Ke=cst_StiffMat_1D([ai,bi],n,1)
+        Be=Moment1D(ai, bi, lambda x: 1, n)
+        #print("i :",i)
+        #print("ke :", Ke)
+        #print("Be :",Be)
+        for j in range(n+1):
+            for k in range(n+1):
+                r1=j/n
+                coord1=ai*(1-r1)+r1*bi
+                r2=k/n
+                coord2=ai*(1-r2)+r2*bi
+                ind1=d[coord1]
+                ind2=d[coord2]
+                #print("ind1,ind2 are: ",ind1,ind2)
+                K[ind1][ind2]+=Ke[j][k]
+
+        for j in range(n+1):
+            r1=j/n
+            coord1=ai*(1-r1)+r1*bi
+            ind1=d[coord1]
+            B[ind1]+=Be[j]
+    
+    #boundary conditions
+    ind0=d[a]
+    ind1=d[b]
+    K=np.delete(K,ind1,axis=0)
+    K=np.delete(K,ind1,axis=1)
+    K=np.delete(K,ind0,axis=0)
+    K=np.delete(K,ind0,axis=1)
+    B=np.delete(B,ind1)
+    B=np.delete(B,ind0)
+    #print("k :")
+    #print(K)
+    #print("B :")
+    #print(B)
+    X=np.zeros(n*(m-1)+1)
+    X[1:n*(m-1)]=np.linalg.solve(K,B)
+    return X
+
+## The exacte solution is given by u(x)=(x-a)(b-x)/2
+
+def plotpoisson1D(a,b,n,m):
+    #Input:
+        # a,b : interval limits
+        # n : polynomial order
+        # m : number of points used in the plot
+    # plot the exact and the aprroximated solution
+    lesx=np.linspace(a,b,m)
+    C=np.zeros(n+1)
+    C[1:n]=poisson1D(a,b,n)
+    #print(C)
+    lesy=[]
+    In=[]
+    Err=[]
+    for x in lesx:
+        y1=deCasteljau1D((x-a)/(b-a),C)
+        y2=(x-a)*(b-x)/2
+        e=abs(y1-y2)
+        lesy.append(y1)
+        In.append(y2)
+        Err.append(e)
+    plt.title(r"poisson 1D: $-u^{''}(x)=1; \, u("+str(a)+")=u("+str(b)+")=0$ ,$n=$"+str(n))
+    plt.plot(lesx,lesy,'r',label="approx")
+    plt.plot(lesx,In, 'g', label="exact")
+    plt.legend()
+    plt.figure()
+    plt.title(r"poisson 1D: $-u^{''}(x)=1; \, u("+str(a)+")=u("+str(b)+")=0$ ,$n=$"+str(n))
+    plt.plot(lesx,Err,label="error")
+    plt.show()
+    
+def plotpoisson1Dmesh(a,b,n,m,p):
+    #Input:
+        # a,b : interval limits
+        # n : polynomial order
+        # m : number elements ( sub-intervals)
+        # p : number of points per element used in the plot
+    # plot the exact and the aprroximated solution
+    mesh=np.linspace(a,b,m)
+    C=poisson1Dmesh(a,b,n,m)
+    #print(C)
+    lesx=[]
+    lesy=[]
+    In=[]
+    Err=[]
+    for k in range(m-1):
+        ai=mesh[k]
+        bi=mesh[k+1]
+        Point=np.linspace(ai,bi,p)
+        coef=C[k*n:(k+1)*n+1]
+        #print("coef :",coef)
+        for x in Point:
+            y1=deCasteljau1D((x-ai)/(bi-ai),coef)
+            y2=(x-a)*(b-x)/2
+            e=abs(y1-y2)
+            lesx.append(x)
+            lesy.append(y1)
+            In.append(y2)
+            Err.append(e)
+    plt.title(r"$-u^{''}(x)=1; \, u("+str(a)+")=u("+str(b)+")=0$ ,$n=$"+str(n)+" ,$ne=$"+str(m))
+    plt.plot(lesx,lesy,'r',label="approx")
+    plt.plot(lesx,In, 'g', label="exact")
+    plt.legend()
+    plt.figure()
+    plt.title(r"$-u^{''}(x)=1; \, u("+str(a)+")=u("+str(b)+")=0$ ,$n=$"+str(n)+" ,$ne=$"+str(m))
+    plt.plot(lesx,Err,label="Error")
+    plt.legend()
+    plt.show()
+    
+       
+def L2ErrorP1D(a,b,n,m):
+    lesx=np.linspace(a,b,m)
+    C=np.zeros(n+1)
+    C[1:n]=poisson1D(a,b,n)
+    #print(C)
+    lesy=[]
+    for x in lesx:
+        y1=deCasteljau1D((x-a)/(b-a),C)
+        y2=(x-a)*(b-x)/2
+        lesy.append(y1-y2)
+    e=np.array(lesy)
+    e=e**2
+    x=np.array(lesx)
+    E=np.sqrt(0.5*np.sum((e[:-1] + e[1:])*(x[1:] - x[:-1])))
+    print("{:.2e}".format(E))
+
+def L2ErrorP1Dmesh(a,b,n,m,p):
+    #Input:
+        # a,b : interval limits
+        # n : polynomial order
+        # m : number elements ( sub-intervals)
+        # p : number of points per element used in the plot
+    # return the L2-norm of the error function
+    mesh=np.linspace(a,b,m)
+    C=poisson1Dmesh(a,b,n,m)
+    #print(C)
+    lesx=[]
+    lesy=[]
+    for k in range(m-1):
+        ai=mesh[k]
+        bi=mesh[k+1]
+        Point=np.linspace(ai,bi,p)
+        coef=C[k*n:(k+1)*n+1]
+        #print("coef :",coef)
+        for x in Point:
+            y1=deCasteljau1D((x-ai)/(bi-ai),coef)
+            y2=(x-a)*(b-x)/2
+            e=y1-y2
+            lesx.append(x)
+            lesy.append(e)
+    e=np.array(lesy)
+    e=e**2
+    x=np.array(lesx)
+    E=np.sqrt(0.5*np.sum((e[:-1] + e[1:])*(x[1:] - x[:-1])))
+    print("{:.2e}".format(E))
+ 
+    
+   
+## Exemple u'=1 , u(a)=0, sol exacte u(x)=x-a
+
+
+def Ex1mesh(a,b,n,m):
+    #Input:
+        # a,b : interval limits
+        # n : polynomial order
+        # m : number elements ( sub-intervals)
+    # return the BB vector of the solution, taking in account boundary condition
+    mesh=np.linspace(a,b,m)
+    nnod=n*(m-1)
+    d=dict() # keys are physical cordinates and values are the index in the global mesh
+    for i in range(nnod):
+        k=i//n
+        r=(i%n)/n
+        ai=mesh[k]
+        bi=mesh[k+1]
+        coord=ai*(1-r)+r*bi
+        d[coord]=i
+    d[b]=nnod
+    
+    # assembling global stiffness matrix and load vector
+    V=np.zeros((nnod+1,nnod+1))
+    B=np.zeros(nnod+1)
+    for i in range(m-1):
+        ai=mesh[i]
+        bi=mesh[i+1]
+        Ve=cst_ConvMat_1D([ai,bi],n,1)
+        Be=Moment1D(ai, bi, lambda x: 1, n)
+        #print("i :",i)
+        #print("Ve :", Ve)
+        #print("Be :",Be)
+        for j in range(n+1):
+            for k in range(n+1):
+                r1=j/n
+                coord1=ai*(1-r1)+r1*bi
+                r2=k/n
+                coord2=ai*(1-r2)+r2*bi
+                ind1=d[coord1]
+                ind2=d[coord2]
+                #print("ind1,ind2 are: ",ind1,ind2)
+                V[ind1][ind2]+=Ve[j][k]
+
+        for j in range(n+1):
+            r1=j/n
+            coord1=ai*(1-r1)+r1*bi
+            ind1=d[coord1]
+            B[ind1]+=Be[j]
+    
+    #boundary conditions
+    ind0=d[a]
+    V=np.delete(V,ind0,axis=0)
+    V=np.delete(V,ind0,axis=1)
+    B=np.delete(B,ind0)
+    #print("V :")
+    #print(V)
+    #print("B :")
+    #print(B)
+    X=np.zeros(n*(m-1)+1)
+    X[1:n*(m-1)+1]=np.linalg.solve(V,B)
+    return X
+
+def plotEx1mesh(a,b,n,m,p):
+    #Input:
+        # a,b : interval limits
+        # n : polynomial order
+        # m : number elements ( sub-intervals)
+        # p : number of points used in the plot
+    # plot the exact and the aprroximated solution
+    mesh=np.linspace(a,b,m)
+    C=Ex1mesh(a,b,n,m)
+    #print(C)
+    lesx=[]
+    lesy=[]
+    In=[]
+    Err=[]
+    for k in range(m-1):
+        ai=mesh[k]
+        bi=mesh[k+1]
+        Point=np.linspace(ai,bi,p)
+        coef=C[k*n:(k+1)*n+1]
+        #print("coef :",coef)
+        for x in Point:
+            y1=deCasteljau1D((x-ai)/(bi-ai),coef)
+            y2=x-a
+            e=abs(y1-y2)
+            lesx.append(x)
+            lesy.append(y1)
+            In.append(y2)
+            Err.append(e)
+    plt.title(r"$-u^{'}(x)=1; \, u("+str(a)+")=0$ ,$n=$"+str(n))
+    plt.plot(lesx,lesy,'r',label="approx")
+    plt.plot(lesx,In, 'g', label="exact")
+    plt.legend()
+    plt.figure()
+    plt.title(r"$-u^{'}(x)=1; \, u("+str(a)+")=0$ ,$n=$"+str(n))
+    plt.plot(lesx,Err,label="Error")
+    plt.legend()
+    plt.show()
+
+    
+def plotEx1Error(n,m):
+    lesx=np.linspace(0,1,m)
+    C=np.zeros(n+1)
+    C[1:n+1]=Ex1(n)
+    print(C)
+    lesy=[]
+    for x in lesx:
+        lesy.append(deCasteljau1D(x,C)-x)
+    plt.title(r"$u'(x)=1$ et $u(0)=0$ where $n$="+str(n))
+    plt.plot(lesx,lesy,label="error")
+    plt.legend()
+    #plt.xlim(0,1)
+    #plt.ylim(-1, 1)
+    plt.show()
+
+def L2_normErrorEx1(n,m):
+    ## Trapezoidal rule
+    lesx=np.linspace(0,1,m)
+    C=np.zeros(n+1)
+    C[1:n+1]=Ex1(n)
+    #print(C)
+    lesy=[]
+    for x in lesx:
+        lesy.append(deCasteljau1D(x,C)-x)
+    e=np.array(lesy)
+    e=e**2
+    E=np.sqrt(0.5*np.sum((e[:-1] + e[1:])*(lesx[1:] - lesx[:-1])))
+    print("L2-norm of the error:")
+    print("{:.2e}".format(E))
+    
+## Another exemple: -u"+u=1 on (0,1), u(0)=u(1)=0
+
+def Ex2(n):
+    K=cst_StiffMat_1D([0,1],n,1)
+    K=np.delete(K,n,axis=0)
+    K=np.delete(K,n,axis=1)
+    K=np.delete(K,0,axis=0)
+    K=np.delete(K,0,axis=1)
+    V=cst_ConvMat_1D([0,1],n,1)
+    V=np.delete(V,n,axis=0)
+    V=np.delete(V,n,axis=1)
+    V=np.delete(V,0,axis=0)
+    V=np.delete(V,0,axis=1)
+    B=Moment1D(0, 1, lambda x: 1, n)
+    B=np.delete(B,n)
+    B=np.delete(B,0)
+    X=np.linalg.solve(K+V,B)
+    return X
+
+# the exacte solution of the above equation
+def exact(x):
+    A=1/(1-np.exp(1))
+    return A*(np.exp(x)-1)+x
+
+def plotEx2Error(n,m):
+    lesx=np.linspace(0,1,m)
+    C=np.zeros(n+1)
+    C[1:n]=Ex2(n)
+    print(C)
+    lesy=[]
+    for x in lesx:
+        lesy.append(deCasteljau1D(x,C)-exact(x))
+    plt.title("Error $-u^{''}+u=1$ wher $n=$"+str(n))
+    plt.plot(lesx,lesy,"r",label="aprox")
+    plt.legend()
+    plt.show()
+
+def L2_normErrorEx2(n,m):
+    lesx=np.linspace(0,1,m)
+    C=np.zeros(n+1)
+    C[1:n]=Ex2(n)
+    print(C)
+    lesy=[]
+    for x in lesx:
+        lesy.append(deCasteljau1D(x,C)-exact(x))
+    e=np.array(lesy)
+    e=e**2
+    x=np.array(lesx)
+    E=np.sqrt(0.5*np.sum((e[:-1] + e[1:])*(x[1:] - x[:-1])))
+    print("{:.2e}".format(E))
