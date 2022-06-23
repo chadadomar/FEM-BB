@@ -80,7 +80,7 @@ def domainp(n):
     P,T=mesh()
     nt=len(T)
     nv=len(P)
-    plt.triplot(P[:, 0], P[:, 1], T)
+    #plt.triplot(P[:, 0], P[:, 1], T)
     I=indexes2D(n)
     w=(n+2)*(n+1)//2
     newT=np.zeros((nt,w),dtype=np.uint64)
@@ -127,12 +127,13 @@ def domainp(n):
         #plt.text(x, y, str(i), fontsize=20)'''
         
     
-    for i in range(len(P)):
+    '''for i in range(len(P)):
         if Onboundary(P[i]):
             plt.text(P[i][0], P[i][1], str(i), fontsize=13)#, color='red')
         else:
-            plt.text(P[i][0], P[i][1], str(i), fontsize=13 )
-    plt.scatter(lesx,lesy, color="red")
+            plt.text(P[i][0], P[i][1], str(i), fontsize=13 )'''
+            
+    #plt.scatter(lesx,lesy, color="red")
     #plt.scatter(newx,newy, color="green")
     #print("points",P)
     #plt.show()
@@ -160,18 +161,21 @@ def locToglob(n,ind_loc,ind_elem):
         print("the local index is out of range")
     else:
         P,T=domainp(n)
-        t=T[ind_elem] 
-        #sommet of the traingle are:
+        t=T[ind_elem]  # Triangle containig the point
+        I=t[ind_loc]   # Golbal inex of the point 
+        
+        # Visual verification
+        '''#sommet of the traingle are:
         v0=P[t[0]]
         v1=P[t[w-1-n]]
         v2=P[t[-1]]
-        plt.plot([v0[0],v1[0],v2[0],v0[0]],[v0[1],v1[1],v2[1],v0[1]],color="green")
+        #plt.plot([v0[0],v1[0],v2[0],v0[0]],[v0[1],v1[1],v2[1],v0[1]],color="green")
         (t0,t1,t2)=indexes2D(n)[ind_loc]
         resP=[(t0*v0[0]+t1*v1[0]+t2*v2[0])/n,(t0*v0[1]+t1*v1[1]+t2*v2[1])/n]
         plt.text(resP[0],resP[1],"He",color="green")
-        I=t[ind_loc]
         plt.text(P[I][0],P[I][1],"Here",color="red")
-        plt.show()
+        plt.show() '''
+        
         return I
 
 # Return The BB-vector of the FEM-solution
@@ -180,9 +184,11 @@ def sol2D(n):
     #print("P and its lenth is ",len(P),P)
     #print("T and its lenth is ",len(T),T)
     nv=len(P) # number of domaine points
+    print("number of domaine points :",nv)
+    print("number of elements :" ,len(T))
 
-    K=np.zeros((nv,nv))
-    B=np.zeros(nv)
+    K=np.zeros((nv,nv)) # Golbal stiffness matrix
+    B=np.zeros(nv)      # Global load vector
     
     '''d=dict()
     for i in range(nv):
@@ -195,11 +201,13 @@ def sol2D(n):
     print("d ",d)'''
     
     
-    w=(n+2)*(n+1)//2
+    w=(n+2)*(n+1)//2  # numbre of domain points per element
     #Ind=indexes2D(n)
     
     for ti in range(len(T)):
         t=T[ti]
+        
+        # vertex of the triangle/elem t
         v0=P[t[0]]
         v1=P[t[w-1-n]]
         v2=P[t[-1]]
@@ -212,17 +220,20 @@ def sol2D(n):
         Be=Moment2D(Trig, lambda x,y:2*(x*(1-x)+y*(1-y)), n) #local load vector
         #print("ke ",Ke)
         #print("Be ",Be)
+        
         for i in range(w):
             for j in range(w):
                 I=t[i] # global index of i
                 J=t[j] # global index of j
                 K[I][J]+=Ke[i][j]
+                
         for i in range(w):
             I=t[i] # global index of i
             B[I]+=Be[i]
     
     #print("K ",len(K),"\n",K)
-    #print("B n",len(B),"\n",B)        
+    #print("B n",len(B),"\n",B) 
+       
     Bound=[]
     for i in range(nv-1,-1,-1):
         if Onboundary(P[i]):
@@ -231,9 +242,23 @@ def sol2D(n):
             B=np.delete(B,i)
             Bound.append(i)
     
-    #X=np.linalg.solve(K,B)
-    print("boundary \n", Bound)
-    #print("BB vect \n", X)
+    X=np.linalg.solve(K,B)
+    print("boundary Points (size: ", len(Bound)," ) \n", Bound)
+    print("BB without boundary coeff vect (size:",len(X)," ) \n", X)
+    
+    #construct full BB coeff vector:
+    BB=np.ones(nv)
+    for i in Bound:
+        BB[i]=0
+    k=0
+    for i in range(nv):
+        if BB[i]==1.:
+            BB[i]=X[k]
+            k+=1
+    #print(k)
+    return BB
+        
+    
     #return X
 
 
