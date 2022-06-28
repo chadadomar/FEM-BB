@@ -184,7 +184,20 @@ def getIndex3D(n,t):
     else:
         s=n-i
         return int(0.5*((s-1)*s*(2*s-1)/6+3*(s-1)*s/2+2*s) + getIndex2D(s,(j,k,l)))
-        
+
+# Get barycentrc coordinates from cartesian cordinate
+def BarCord2d(T,x,y):
+    #In:
+        # T: triangle(non degenerate)
+        # x,y : Cartesian cordinate of the point
+    #Out:
+        # [lambda1,lambda2,lambda3]: list of barycentric coordinate of the point
+    [x0,y0,x1,y1,x2,y2]=T
+    M=np.array([[x0,x1,x2],[y0,y1,y2],[1,1,1]])
+    if np.linalg.det(M)==0:
+        print("Error: triangle is degenretaed")
+    else:
+        return np.linalg.solve(M,np.array([x,y,1]))
     
 
 # Bernestein-Bézier moment

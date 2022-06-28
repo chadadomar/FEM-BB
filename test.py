@@ -5,11 +5,12 @@ Created on Wed Apr 27 17:35:11 2022
 
 @author: omarch
 """
-from Assembly import StiffMat2D , Moment2D , indexes2D
+from Assembly import StiffMat2D , Moment2D , indexes2D, BarCord2d
 import meshpy.triangle as triangle
 import numpy as np
 from decimal import *
 import matplotlib.pyplot as plt
+import quadpy
 
 
 # Tests:
@@ -129,11 +130,12 @@ def domainp(n):
     
     '''for i in range(len(P)):
         if Onboundary(P[i]):
-            plt.text(P[i][0], P[i][1], str(i), fontsize=13)#, color='red')
+            plt.text(P[i][0], P[i][1], str(i), fontsize=13, color='red')
         else:
             plt.text(P[i][0], P[i][1], str(i), fontsize=13 )'''
             
     #plt.scatter(lesx,lesy, color="red")
+    #plt.title("Domain points for n="+str(n))
     #plt.scatter(newx,newy, color="green")
     #print("points",P)
     #plt.show()
@@ -184,8 +186,8 @@ def sol2D(n):
     #print("P and its lenth is ",len(P),P)
     #print("T and its lenth is ",len(T),T)
     nv=len(P) # number of domaine points
-    print("number of domaine points :",nv)
-    print("number of elements :" ,len(T))
+    #print("number of domaine points :",nv)
+    #print("number of elements :" ,len(T))
 
     K=np.zeros((nv,nv)) # Golbal stiffness matrix
     B=np.zeros(nv)      # Global load vector
@@ -243,8 +245,8 @@ def sol2D(n):
             Bound.append(i)
     
     X=np.linalg.solve(K,B)
-    print("boundary Points (size: ", len(Bound)," ) \n", Bound)
-    print("BB without boundary coeff vect (size:",len(X)," ) \n", X)
+    #print("boundary Points (size: ", len(Bound)," ) \n", Bound)
+    #print("BB without boundary coeff vect (size:",len(X)," ) \n", X)
     
     #construct full BB coeff vector:
     BB=np.ones(nv)
@@ -258,14 +260,12 @@ def sol2D(n):
     #print(k)
     return BB
         
-    
-    #return X
 
 
 ## The functions below need modification
 
 
-def plotpoisson2D(n,m):
+def plotpoisson2d(n,m):
     C=sol2D(n)
     lesx=np.linspace(0,1,m)
     lesy=np.linspace(0,1,m)
@@ -290,80 +290,27 @@ def plotpoisson2D(n,m):
     plt.show()
         
 
-## Exact sol is given by u(x,y)=x*y(x+y-1)
-def plotexact2D(m):
-    lesx=np.linspace(0,1,m)
-    lesy=np.linspace(0,1,m)
-    X,Y=np.meshgrid(lesx,lesy)
-    Z=np.zeros((m,m))
-    T=np.zeros((m,m))
-    E=np.zeros((m,m))
-    for i in range(m):
-        for j in range(m):
-            x=X[i][j]
-            y=Y[i][j]
-            if x+y<=1:
-                T[i][j]+=x*y*(x+y-1)
-    fig = plt.figure(figsize =(14, 9))
-    ax = plt.axes(projection='3d')
-    print(len(X))
-    print(len(Y))
-    print(len(T))
-    #ax.plot_surface(X, Y, Z)
-    surf=ax.plot_surface(X, Y, T,cmap='viridis')
-    #fig.colorbar(surf, ax = ax,shrink = 0.5, aspect = 5)
-    #ax.set_title('Erreur u''=2(x+y)')
-    plt.show()
+## Exact sol is given by u(x,y)=x*y*(x-1)*(y-1)
 
-def ploterror2D(n,m):
-    C=sol2D(n)
-    lesx=np.linspace(0,1,m)
-    lesy=np.linspace(0,1,m)
-    X,Y=np.meshgrid(lesx,lesy)
-    Z=np.zeros((m,m))
-    T=np.zeros((m,m))
-    E=np.zeros((m,m))
-    for i in range(m):
-        for j in range(m):
-            x=X[i][j]
-            y=Y[i][j]
-            if x+y<=1:
-                Z[i][j]+=deCasteljau2D((1-x-y,x,y),C,n)
-                T[i][j]+=x*y*(x+y-1)
-                E[i][j]+=abs(Z[i][j]-T[i][j])
-    fig=plt.figure(figsize=(6,5))
-    left, bottom, width, height = 0.1, 0.1, 0.8, 0.8
-    ax=fig.add_axes([left, bottom, width, height]) 
-    cp = plt.contourf(X, Y, E)
-    plt.colorbar(cp)
-    ax.set_title('Error of poisson 2D where $n=$'+str(n))
-    #ax.set_xlabel('x')
-    #ax.set_ylabel('y')
-    #fig = plt.figure(figsize =(14, 9))
-    #ax = plt.axes(projection='3d')
-    #ax.plot_surface(X, Y, Z)
-    #surf=ax.plot_surface(X, Y, E,cmap='viridis')
-    #fig.colorbar(surf, ax = ax,shrink = 0.5, aspect = 5)
-    #ax.set_title('Erreur u''=2(x+y)')
-    plt.show()
     
-def l2_normP2D(n,m):
+def l2_normP2d(n):
     C=sol2D(n)
-    lesx=np.linspace(0,1,m)
-    lesy=np.linspace(0,1,m)
-    X,Y=np.meshgrid(lesx,lesy)
-    Z=np.zeros((m,m))
-    T=np.zeros((m,m))
-    E=np.zeros((m,m))
-    for i in range(m):
-        for j in range(m):
-            x=X[i][j]
-            y=Y[i][j]
-            if x+y<=1:
-                Z[i][j]+=deCasteljau2D((1-x-y,x,y),C,n)
-                T[i][j]+=x*y*(x+y-1)
-                E[i][j]+=abs(Z[i][j]-T[i][j])
-    E=E**2
-    error=np.sqrt(simps([simps(E_x,lesx) for E_x in E],lesy) )
+    P,T=domainp(n)
+    w=(n+2)*(n+1)//2  # numbre of domain points per element
+    error=0
+    for t in T:
+        # vertex of the triangle/elem t
+        v0=P[t[0]]
+        v1=P[t[w-1-n]]
+        v2=P[t[-1]]
+        triangle=np.array([v0,v1,v2])
+        def f(x,y):
+            T=[v0[0],v0[1],v1[0],v1[1], v2[0],v2[1]] 
+            lam=BarCord2d(T,x,y)
+            BB=[C[t[i]] for i in range(w)]
+            return (x*y*(x-1)*(y-1)-deCasteljau2D(lam,BB,n))**2
+        scheme = quadpy.t2.get_good_scheme(12)
+        error+=scheme.integrate(f,triangle)
+    error=np.sqrt(error)
     print("{:.2e}".format(error))
 
