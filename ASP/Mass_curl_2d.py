@@ -87,11 +87,7 @@ def grad2D(L):
 def indexes2D(n):
     return [(i,j, n-(i+j)) for i in range(n,-1, -1) for j in range(n-i, -1, -1)]
 
-def getIndex2D(n,t):
-    #n : polynomial order
-    #t : index of the domain point (also polynomial index) in lexicographical order
-    (i,j,k)=t
-    return int((n-i)*(n-i+1)//2+n-i-j)  
+
 
 def multifact(a,b):
     n=len(a)
