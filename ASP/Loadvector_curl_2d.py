@@ -122,8 +122,8 @@ def load2d(F,L,r):
 
             load[nBerngrad+i]+=quantity1+quantity2
 
-    M1=Moment2D(L,f1,1,6)
-    M2=Moment2D(L,f2,1,6)
+    M1=Moment2D(L,f1,1,15)
+    M2=Moment2D(L,f2,1,15)
 
     for i in range(3):
         for r in [-1,1]:

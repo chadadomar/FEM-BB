@@ -5,7 +5,7 @@ Created on Wed Apr 27 17:35:11 2022
 
 @author: omarch
 """
-from Assembly import StiffMat2D , Moment2D , indexes2D, BarCord2d
+#from Assembly import StiffMat2D , Moment2D , indexes2D, BarCord2d
 import meshpy.triangle as triangle
 import numpy as np
 from decimal import *
@@ -23,7 +23,8 @@ plt.rcParams.update({'font.size': 20})
 ## Poisson equation  -div( grad u)=2(x(1-x)+y(1-y)), u=0 on the boundary of the 
 ## reference square
 
-
+def indexes2D(n):
+    return [(i,j, n-(i+j)) for i in range(n,-1, -1) for j in range(n-i, -1, -1)]
 
 
 ## Mesh of the reference triangle
