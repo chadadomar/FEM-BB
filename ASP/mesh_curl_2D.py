@@ -77,7 +77,7 @@ def mesh():
     info.set_facets(round_trip_connect(0, len(points) - 1))
 
     #mesh = triangle.build(info, refinement_func=needs_refinement)
-    mesh = triangle.build(info,max_volume=0.002, min_angle=25,)
+    mesh = triangle.build(info,max_volume=0.5, min_angle=25,)
     
     mesh_points = np.array(mesh.points)
     #number_points=len(mesh_points)

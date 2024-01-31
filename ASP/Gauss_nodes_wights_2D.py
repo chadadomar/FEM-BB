@@ -5,7 +5,13 @@ Created on Fri Jan 19 19:30:22 2024
 
 @author: omarch
 
- Quadrature ruel on reference triangle
+Reference: D.A. Dunavant,
+      High degree efficient symmetrical gaussian
+      quadrature rules for the triangle,
+      International Journal for Num. Methods in Eng.,
+      21, 1129-1148, 1985.
+
+ Quadrature nodes and weights on reference triangle
 """
 
 

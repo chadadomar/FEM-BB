@@ -32,6 +32,9 @@ def f(x,y):
 def uf(x,y):
     return np.array([y*(1-y),x*(1-x)])
 
+def curluf(x,y):
+    return 2*(y-x)
+
 def g(x,y):
     return np.array([-y,x])
 
@@ -42,7 +45,8 @@ def h(x,y):
 def uh(x,y):
     return np.array([np.sin(y*(1-y)),np.sin(x*(1-x))]) 
 
-
+def curluh(x,y):
+    return (1 - 2*x)*np.cos(x*(1 - x)) - (1 - 2*y)*np.cos(y*(1 - y))
 
 mesh_points,mesh_tris,mesh_edges,tris_edges=mesh()
 ntris=len(mesh_tris)
@@ -149,5 +153,32 @@ def testCurl(r,f,uf):
     print("error", np.sqrt(error))
     #print("error without square", error)
     
-
+def HcurlError(r,f,uf,curluf):
+    X,I=assemble_boundary(r,f)
+    newX=reconstruct(X,I)
+    #print("I",I)
+    error=0
+    for i in range(ntris):
+        T=mesh_tris[i]
+        
+        p0=mesh_points[T[0]]
+        p1=mesh_points[T[1]]
+        p2=mesh_points[T[2]]
+        
+        Liste=[p0[0],p0[1],p1[0],p1[1],p2[0],p2[1]]
+        ndof=r*(r+2)
+        Coef=[]
+        for j in range(ndof):
+            k,sign=local_to_global(nedges, T, tris_edges[i], i, j, r)
+            #print("i j k signe",i,j,k,sign)
+            Coef.append(sign*newX[k])
+        def errf(x,y):
+            return (Eval_curl(Liste,r,Coef,x,y)[0]-uf(x,y)[0])**2 +   (Eval_curl(Liste,r,Coef,x,y)[1]-uf(x,y)[1])**2 + (Eval_curlcurl(Liste,r,Coef,x,y)-curluf(x,y))**2
+        contribution=quad(Liste, errf, r+1)
+        error+=contribution
+        #print("triangle ", Liste ,"error ",contribution)
+        #print(" BB form ", Coef)
+    print("error", np.sqrt(error))
+    #print("error without square", error)
+    
     

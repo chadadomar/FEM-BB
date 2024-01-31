@@ -159,4 +159,60 @@ def Eval_curl(L,r,C,x,y):
         res+= C[-1]*w3(L,x,y)
         
         return res
+
+def c_star(alpha,L):
+    T=AirT2D(L)
+    p=sum(alpha)
+    c_bar=[]
+    
+    # k=l 
+    eta=list(alpha)
+    '''q=(alpha[0]+1)*(alpha[1]+alpha[2])
+    q+=(alpha[1]+1)*(alpha[0]+alpha[2])
+    q+=(alpha[2]+1)*(alpha[1]+alpha[0])
+    q*=((p+1)/(2*T) )'''
+    q=((p+1)/(T) )* (alpha[0]*alpha[1]+alpha[1]*alpha[2]+alpha[2]*alpha[0]+p)
+    c_bar.append((eta,q))
+    
+    # k != l
+    for k in range(3):
+        for l in range(3):
+            if alpha[l]==0:
+                continue
+            if k!=l:
+                eta=list(alpha)
+                eta[k]+=1
+                eta[l]-=1
+                q=(-(p+1)/(2*T) ) * (alpha[k]+1) * alpha[l]
+                c_bar.append((eta,q))
+    return c_bar
+
+def Eval_curlcurl(L,r,C,x,y):
+    T=AirT2D(L)
+    ndof=r*(r+2)
+    if len(C)!= ndof:
+        raise Exception("the size of vector of coefficient is not valid")
+    else:
+        res=0
+        
+        nBern=(r+2)*(r+1)//2
+        nBerngrad=nBern-3
+
+        Gammalist=indexes2D(r-1)
+        Gammalist.pop()
+        nGamma=len(Gammalist)
+        
+        for i in range(nGamma):
+            alpha=Gammalist[i]
+            j=nBerngrad+i
+            star=c_star(alpha,L)
+            temp=0
+            for elem in star:
+                eta,q=elem
+                temp+=q*Bern(L, eta, r-1, x, y)
+            res+=C[j]*temp
             
+        # curl whitney contribution
+        res+= (C[-3]+ C[-2] + C[-1]) /T
+        
+        return res
