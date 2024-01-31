@@ -29,21 +29,26 @@ def AirT2D(L):
     return np.sqrt(p*(p - a) * (p - b) * (p - c))
 
 
+def SignedAirT2D(L):
+    [x1,y1,x2,y2,x3,y3]=L
+    M=np.array([[1,1,1],[x1,x2,x3],[y1,y2,y3]])
+    return np.linalg.det(M)
+
 # function of barycentric cooordinate
 def lambda1(L,x,y):
-    T=AirT2D(L)
+    T=SignedAirT2D(L)
     [x1,y1,x2,y2,x3,y3]=L
-    return ((x2*y3-y2*x3)-x*(y3-y2)+y*(x3-x2))/(2*T)
+    return ((x2*y3-y2*x3)-x*(y3-y2)+y*(x3-x2))/(T)
 
 def lambda2(L,x,y):
-    T=AirT2D(L)
+    T=SignedAirT2D(L)
     [x1,y1,x2,y2,x3,y3]=L
-    return (x3*y1-y3*x1)-x*(y1-y3)+y*(x1-x3)/(2*T)
+    return ((x3*y1-y3*x1)-x*(y1-y3)+y*(x1-x3))/(T)
 
 def lambda3(L,x,y):
-    T=AirT2D(L)
+    T=SignedAirT2D(L)
     [x1,y1,x2,y2,x3,y3]=L
-    return (x1*y2-y1*x2)-x*(y2-y1)+y*(x2-x1)/(2*T)
+    return ((x1*y2-y1*x2)-x*(y2-y1)+y*(x2-x1))/(T)
 
 # Gradient of barycentric coordinate 
 # vertices are orderd counter-clockwise
@@ -114,6 +119,8 @@ def gradBern(L,alpha,r,x,y):
         
 # Buble functions
 def Gamma(L,alpha,r,x,y):
+    if sum(alpha) != r-1:
+        raise Exception("index of bernstein polynomial not valid")
     res=alpha[0]*w1(L,x,y)+alpha[1]*w2(L,x,y)+alpha[2]*w3(L,x,y)
     res*=r * Bern(L, alpha, r-1, x, y)
     return res

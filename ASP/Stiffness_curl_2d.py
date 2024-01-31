@@ -7,7 +7,7 @@ Created on Mon Nov 13 14:02:52 2023
 """
 
 import numpy as np
-
+import math as mt
 
 
 ## Return T: pascal triangle of ordre n
@@ -19,7 +19,27 @@ def fact(n):
         return 1
     else:
         return n*fact(n-1)
+    
+def multifact(a,b):
+    n=len(a)
+    if len(b)!=n:
+        raise Exception("Sorry, different size")
+    else:
+        p=1
+        for i in range(n):
+            p*=mt.comb(a[i],b[i])
+        return p
 
+def sumVect(u,v):
+    m=len(u)
+    n=len(v)
+    if n!=m:
+        print("the vectors have different size")
+    else:
+        w=[]
+        for i in range(n):
+            w.append(int(u[i]+v[i]))
+        return w
 
 ### Aire triangle based on Heron Formulae
 def AirT2D(L):
@@ -40,6 +60,33 @@ def getIndex2D(n,t):
     return int((n-i)*(n-i+1)//2+n-i-j)  
 
 
+def c_star(alpha,L):
+    T=AirT2D(L)
+    p=sum(alpha)
+    c_bar=[]
+    
+    # k=l 
+    eta=list(alpha)
+    '''q=(alpha[0]+1)*(alpha[1]+alpha[2])
+    q+=(alpha[1]+1)*(alpha[0]+alpha[2])
+    q+=(alpha[2]+1)*(alpha[1]+alpha[0])
+    q*=((p+1)/(2*T) )'''
+    q=((p+1)/(T) )* (alpha[0]*alpha[1]+alpha[1]*alpha[2]+alpha[2]*alpha[0]+p)
+    c_bar.append((eta,q))
+    
+    # k != l
+    for k in range(3):
+        for l in range(3):
+            if alpha[l]==0:
+                continue
+            if k!=l:
+                eta=list(alpha)
+                eta[k]+=1
+                eta[l]-=1
+                q=(-(p+1)/(2*T) ) * (alpha[k]+1) * alpha[l]
+                c_bar.append((eta,q))
+    return c_bar
+
 def Stiff2d(L,r):
     p=r-1
     T=AirT2D(L)
@@ -47,9 +94,13 @@ def Stiff2d(L,r):
     nBern=int((r+1)*(r+2)/2)
     
     S=np.zeros((ndof,ndof))
-
+    
+    # whitney whitney
     S[-3:,-3:]=np.full((3,3),1/T)
     
+    
+    
+    # Gamma Gamma
     In=indexes2D(r-1)
     In.pop()
     m=len(In)
@@ -58,48 +109,32 @@ def Stiff2d(L,r):
             alpha=In[i]
             beta=In[j]
             coef=2*T*(fact(p)**2)/(fact(2*r))
-            for k in range(3):
-                for l in range(3):
-                    if alpha[l]==0:
-                        continue
-                    else:
-                        if k!=l:
-                            c_eta= -r * (alpha[k]+1) * alpha[l] /(2*T) 
-                        else:
-                            c_eta= r*( alpha[0]*alpha[1]+alpha[0]*alpha[2]+alpha[1]*alpha[2]+p)/T
-                        for u in range(3):
-                            for v in range(3):
-                                if beta[v]==0:
-                                    continue
-                                else:
-                                    if k!=l:
-                                        c_pho= -r * (beta[k]+1) * beta[l] /(2*T) 
-                                    else:
-                                        c_pho= r*( beta[0]*beta[1]+beta[0]*beta[2]+beta[1]*beta[2]+p)/T
-                                    eta=list(alpha)
-                                    eta[k]+=1
-                                    eta[l]-=1
-                                    pho=list(beta)
-                                    pho[u]+=1
-                                    pho[v]-=1
-                                    coefbin= fact(eta[0]+pho[0])/fact(eta[0])
-                                    coefbin*=fact(eta[1]+pho[1])/fact(eta[1])
-                                    coefbin*=fact(eta[2]+pho[2])/fact(eta[2])
-                                    S[i+nBern-3][j+nBern-3]+=coefbin*c_eta*c_pho
-            S[i+nBern-3][j+nBern-3]*=coef
+            star_alpha=c_star(alpha,L)
+            star_beta=c_star(beta,L)
+            '''if (i==0 and j==1):
+                print("coef is ", coef)
+                print("star_alpha ", star_alpha)
+                print("star_beta ",star_beta)'''
+            temp=0
+            for x in star_alpha:
+                for y in star_beta:
+                    eta=x[0]
+                    pho=y[0]
+                    temp+=multifact(sumVect(eta,pho) , pho) *x[1] *y[1]
+                    '''if (i==0 and j==1):
+                        print("temps ",temp)'''
+            S[nBern-3+i][nBern-3+j]+=coef*temp
+            
+    # Gamma Whitney
     for k in range(m):
         alpha=In[k]
         for i in range(1,4):
             coef=2*fact(p)/(T*fact(p+2))
-            for k in range(3):
-                for l in range(3):
-                    if k!=l:
-                        c_eta= -r * (alpha[k]+1) * alpha[l] /(2*T) 
-                    else:
-                        c_eta= r*( alpha[0]*alpha[1]+alpha[0]*alpha[2]+alpha[1]*alpha[2]+p)/T
-                        S[k+nBern-3][-i]+=c_eta
-
-            S[k+nBern-3][-i]*=coef 
+            star_alpha=c_star(alpha,L)
+            temp=0
+            for x in star_alpha:
+                temp+=x[1]
+            S[k+nBern-3][-i]+=coef*temp
     S[-3:,nBern-3:]= np.transpose( S[nBern-3:,-3:] )
 
     return S                                                                                       

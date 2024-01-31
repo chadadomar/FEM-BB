@@ -26,25 +26,38 @@ np.set_printoptions(precision=5 ,linewidth=10000)
 
 
 # Right hand side and solution
-def f(x,y):
-    return np.array([y*(1-y)+2,x*(1-x)+2])
+L=[0,0,1,0,0,1]
 
-def uf(x,y):
-    return np.array([y*(1-y),x*(1-x)])
+
+def f(x,y):
+    return np.array([1,1])
 
 def g(x,y):
     return np.array([-y,x])
 
 # defining second memebre
-def h(x,y):
-    return np.array([ (1 - 2*y)**2*np.sin(y*(1 - y)) + np.sin(y*(1 - y)) + 2*np.cos(y*(1 - y)) , (1 - 2*x)**2*np.sin(x*(1 - x)) + np.sin(x*(1 - x)) + 2*np.cos(x*(1 - x)) ])  
-
-def uh(x,y):
-    return np.array([np.sin(y*(1-y)),np.sin(x*(1-x))]) 
+def f1(x,y):
+    return np.array([-y*x,x*x*y])  # f=W_1 whitney form
 
 
 
-mesh_points,mesh_tris,mesh_edges,tris_edges=mesh()
+
+mesh_points=np.array([[1., 0.],
+        [1., 1.],
+        [0., 1.],
+        [0., 0.]])
+mesh_tris=np. array([[2, 3, 0],
+        [0, 1, 2]])
+mesh_edges=np.array([[0, 1],
+       [0, 2],
+       [0, 3],
+       [1, 2],
+       [2, 3]])
+tris_edges=np. array([[2, 1, 4],
+        [3, 1, 0]])
+
+
+#mesh_points,mesh_tris,mesh_edges,tris_edges=mesh()
 ntris=len(mesh_tris)
 nedges=len(mesh_edges)
 
@@ -89,42 +102,74 @@ def global_matrices(r,h):
 
 def assemble_boundary(r,h):
     S,M,F=global_matrices(r,h)
-    I=IndexToDelete(mesh_edges,mesh_points,r)
-    S=np.delete(S, I,0)
-    S=np.delete(S, I,1)
-    M=np.delete(M, I,0)
-    M=np.delete(M, I,1)
-    F=np.delete(F, I,0)
     #print("global mass matrix \n",M)
-    X=np.linalg.solve(S+M,F)  
-    return X,I
+    X=np.linalg.solve(M,F)  
+    return X
 
-def reconstruct(X,I):
-    # creat new vector with newX:
-        # lenth = sum of lengths of X and I
-        # newX[i]=0 for i in I
-    li=len(I)
-    n=len(X)+li
-    newX=np.zeros(n)
-    x=0
-    i=0
-    flag=True
-    for k in range(n):
-        if flag and k==I[i]:
-            i+=1
-            if i==li:
-                flag=False
-        else:
-            newX[k]=X[x]
-            x+=1
-    return newX
+# Example order 1 , 2 triangles
+'''C=assemble_boundary(1,g)
+err=0
+def errf(x,y):
+    Liste=[0,1,0,0,1,0]
+    C1=[-C[2],C[1],C[4]]
+    return (Eval_curl(Liste,1,C1,x,y)[0]-g(x,y)[0])**2 +   (Eval_curl(Liste,1,C1,x,y)[1]-g(x,y)[1])**2
 
+err+=quad([0,1,0,0,1,0], errf, 1)
+
+def errf2(x,y):
+    Liste=[1,0,1,1,0,1]
+    C1=[C[3],-C[1],C[0]]
+    return (Eval_curl(Liste,1,C1,x,y)[0]-g(x,y)[0])**2 +   (Eval_curl(Liste,1,C1,x,y)[1]-g(x,y)[1])**2
+err+=quad([1,0,1,1,0,1], errf2, 2)
+
+print("error order 1", np.sqrt(err))'''
+
+#################
+
+'''C=assemble_boundary(1,g)
+print("BB coef",C)
+err=0
+def errf(x,y):
+    L=[0,1,0,0,1,0]
+    C1=[0,C[0],0]
+    return (Eval_curl(L,1,C1,x,y)[0]-g(x,y)[0])**2 +   (Eval_curl(L,1,C1,x,y)[1]-g(x,y)[1])**2
+
+err+=quad([1,0,0,0,1,0], errf, 1)
+
+def errf2(x,y):
+    L=[1,0,1,1,0,1]
+    C1=[0,-C[0],0]
+    return (Eval_curl(L,1,C1,x,y)[0]-g(x,y)[0])**2 +   (Eval_curl(L,1,C1,x,y)[1]-g(x,y)[1])**2
+
+err+=quad([1,0,0,0,1,0], errf2, 1)
+
+print("error", np.sqrt(err))'''
+
+## Order 2
+'''C2=assemble_boundary(2,g)
+error=0
+for i in range(ntris):
+    T=mesh_tris[i]
+    
+    p0=mesh_points[T[0]]
+    p1=mesh_points[T[1]]
+    p2=mesh_points[T[2]]
+    
+    Liste=[p0[0],p0[1],p1[0],p1[1],p2[0],p2[1]]
+    ndof=2*(2+2)
+    Coef=[]
+    for j in range(ndof):
+        k,sign=local_to_global(nedges, T, tris_edges[i], i, j, 2)
+        #print("i j k signe",i,j,k,sign)
+        Coef.append(sign*C2[k])
+    def errf(x,y):
+        return (Eval_curl(Liste,2,Coef,x,y)[0]-g(x,y)[0])**2 +   (Eval_curl(Liste,2,Coef,x,y)[1]-g(x,y)[1])**2
+    error+=quad(Liste, errf, 6)
+print("error", np.sqrt(error))'''
 
 ### Aribtrary order r:
-def testCurl(r,f,uf):
-    X,I=assemble_boundary(r,f)
-    newX=reconstruct(X,I)
-    #print("I",I)
+def testarbitrary(r,g):
+    X=assemble_boundary(r,g)
     error=0
     for i in range(ntris):
         T=mesh_tris[i]
@@ -139,15 +184,10 @@ def testCurl(r,f,uf):
         for j in range(ndof):
             k,sign=local_to_global(nedges, T, tris_edges[i], i, j, r)
             #print("i j k signe",i,j,k,sign)
-            Coef.append(sign*newX[k])
+            Coef.append(sign*X[k])
         def errf(x,y):
-            return (Eval_curl(Liste,r,Coef,x,y)[0]-uf(x,y)[0])**2 +   (Eval_curl(Liste,r,Coef,x,y)[1]-uf(x,y)[1])**2
-        contribution=quad(Liste, errf, r+1)
-        error+=contribution
-        #print("triangle ", Liste ,"error ",contribution)
-        #print(" BB form ", Coef)
+            return (Eval_curl(Liste,r,Coef,x,y)[0]-g(x,y)[0])**2 +   (Eval_curl(Liste,r,Coef,x,y)[1]-g(x,y)[1])**2
+        error+=quad(Liste, errf, 6)
     print("error", np.sqrt(error))
-    #print("error without square", error)
     
-
     

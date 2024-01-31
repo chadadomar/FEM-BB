@@ -58,26 +58,40 @@ def AirT2D(L):
     p=(a+b+c)/2
     return np.sqrt(p*(p - a) * (p - b) * (p - c))
 
+def SignedAirT2D(L):
+    [x1,y1,x2,y2,x3,y3]=L
+    M=np.array([[1,1,1],[x1,x2,x3],[y1,y2,y3]])
+    return np.linalg.det(M)
+
 
 # vertices are orderd counter-clockwise
+# Find orientation of 3 points
+def orientation(p1, p2, p3):
+	
+	# to find the orientation of an ordered triplet (p1,p2,p3)
+	val = (float(p2[1] - p1[1]) * (p3[0] - p2[0])) - (float(p2[0] - p1[0]) * (p3[1] - p2[1]))
+	if val >= 0:
+		
+		# Clockwise orientation or collinear
+		return True
+	else: 
+		# Counterclockwise orientation
+		return False
+
+
 def grad2D(L):
-    T=AirT2D(L)
     [x1,y1,x2,y2,x3,y3]=L
+    T=SignedAirT2D(L)
     
-    v1=np.array([y3-y2,x2-x3])
-    if cross2D([x3-x2,y3-y2],v1)<0:
-        v1=-v1
+    v1=np.array([y2-y3,x3-x2])
     v2=np.array([y3-y1,x1-x3])
-    if cross2D([x1-x3,y1-y3],v2)<0:
-        v2=-v2
     v3=np.array([y1-y2,x2-x1])
-    if cross2D([x2-x1,y2-y1],v3)<0:
-        v3=-v3
-    
-    v1=v1/T/2
-    v2=v2/T/2
-    v3=v3/T/2
+
+    v1=v1/T
+    v2=v2/T
+    v3=v3/T
     G=np.array([v1,v2,v3])
+    #print(G)
     gradMat=np.zeros((3,3))
     for i in range(3):
         for j in range(3):
@@ -121,6 +135,7 @@ def mass2d(L,r):
     
     M=np.zeros((ndof,ndof))
     
+    # Nabla Nabla
     for i in range(nBerngrad):
         for j in range(nBerngrad):
             coef=2*(r**2)*(fact(p)**2)*T/ fact(2*r)
@@ -137,7 +152,9 @@ def mass2d(L,r):
                         else:
                             beta[l]-=1
                             M[i][j]+= multifact(sumVect(alpha,beta), alpha)* grad[k][l]
-            M[i][j]*=coef    
+            M[i][j]*=coef   
+    
+    # Nabla Gamma
     for i in range(nBerngrad):
         for j in range(nGamma):
             coef=2*(r**2)*(fact(p)**2)*T/ fact(2*r+1)
@@ -150,16 +167,18 @@ def mass2d(L,r):
                     for l in range(3):
                         beta=list(Gamma[j])
                         
+                        x=0
+                        x+=beta[(l-1)%3]*grad[k][(l+1)%3] 
+                        x-=beta[(l+1)%3]*grad[k][(l-1)%3]
 
-                        M[i][j+nBerngrad]+=beta[l-1]*grad[k][((l+1)%3)] 
-                        M[i][j+nBerngrad]-=beta[((l+1)%3)]*grad[k][l-1]
-
-                        M[i][j+nBerngrad]*=(beta[l]+1)
+                        x*=(beta[l]+1)
                         
                         beta[l]+=1
-                        M[i][j+nBerngrad]*=multifact(sumVect(alpha,beta), alpha)
+                        x*=multifact(sumVect(alpha,beta), alpha)
+                        M[i][j+nBerngrad]+=x
             M[i][j+nBerngrad]*=coef
     
+    # Nabla Whitney
     for a in range(nBerngrad):
         for i in range(3):
             coef=T/m.comb(r+2,2)
@@ -169,13 +188,13 @@ def mass2d(L,r):
                     continue
                 else:
                     alpha[k]-=1
-                    for r in [-1,1]:
+                    for s in [-1,1]:
                         e=[0,0,0]
-                        e[(i+r)%3]=1
-                        M[a][nBerngrad+nGamma+i]+=r*multifact(sumVect(alpha,e), alpha)*grad[k][(i-r)%3]
+                        e[(i+s)%3]=1
+                        M[a][nBerngrad+nGamma+i]+=s*multifact(sumVect(alpha,e), alpha)*grad[k][(i-s)%3]
             M[a][nBerngrad+nGamma+i]*=coef
 
-
+    # Gamma Gamma
     for i in range(nGamma):
         for j in range(nGamma):
             coef=T/ ( m.comb(2*r,r) * m.comb(2*r+2,2)  )
@@ -183,47 +202,53 @@ def mass2d(L,r):
                 for l in range(3):
                     alpha=list(Gamma[i])
                     beta=list(Gamma[j])
-                    M[nBerngrad+i][nBerngrad+j]+=alpha[k-1]*beta[l-1]* grad[(k+1)%3][(l+1)%3]
-                    M[nBerngrad+i][nBerngrad+j]+=alpha[k-1]*beta[(l+1)%3]* grad[(k+1)%3][l-1]
-                    M[nBerngrad+i][nBerngrad+j]+=alpha[(k+1)%3]*beta[l-1]* grad[k-1][(l+1)%3]
-                    M[nBerngrad+i][nBerngrad+j]+=alpha[(k+1)%3]*beta[(k+1)%3] *grad[k-1][l-1]
-                    M[nBerngrad+i][nBerngrad+j]*=(alpha[k]+1)*(beta[l]+1)
+                    x=0
+                    x+=alpha[(k-1)%3]*beta[(l-1)%3] * grad[(k+1)%3][(l+1)%3]
+                    x-=alpha[(k-1)%3]*beta[(l+1)%3] * grad[(k+1)%3][(l-1)%3]
+                    x-=alpha[(k+1)%3]*beta[(l-1)%3] * grad[(k-1)%3][(l+1)%3]
+                    x+=alpha[(k+1)%3]*beta[(l+1)%3] * grad[(k-1)%3][(l-1)%3]
+                    x*=(alpha[k]+1)*(beta[l]+1)
 
                     alpha[k]+=1
                     beta[l]+=1
-                    M[nBerngrad+i][nBerngrad+j]*=multifact(sumVect(alpha,beta),alpha)
+                    x*=multifact(sumVect(alpha,beta),alpha)
+                    M[nBerngrad+i][nBerngrad+j]+=x
             M[nBerngrad+i][nBerngrad+j]*=coef
-
+    
+    # Gamma Whitney
     for a in range(nGamma):
         for i in range(3):
             coef=T/ ( (r+1) * m.comb(r+3,2)  )
             for k in range(3):
-                for r in [-1,1]:
+                for s in [-1,1]:
                     alpha=list(Gamma[a])
                     e=[0,0,0]
-                    e[(i+r)%3]=1
-                    M[nBerngrad+a][nBerngrad+nGamma+i]+=alpha[k-1]*grad[(k+1)%3][(i-r)%3]
-                    M[nBerngrad+a][nBerngrad+nGamma+i]+=alpha[(k+1)%3]*grad[k-1][(i-r)%3]
-                    M[nBerngrad+a][nBerngrad+nGamma+i]*=(alpha[k]+1)
+                    e[(i+s)%3]=1
+                    x=0
+                    x+=alpha[(k-1)%3] * grad[(k+1)%3][(i-s)%3]
+                    x-=alpha[(k+1)%3] * grad[(k-1)%3][(i-s)%3]
+                    x*=(alpha[k]+1)
 
                     alpha[k]+=1
-                    M[nBerngrad+a][nBerngrad+nGamma+i]*=r*multifact(sumVect(alpha,e), alpha)
+                    x*=s*multifact(sumVect(alpha,e), alpha)
+                    M[nBerngrad+a][nBerngrad+nGamma+i]+=x
             M[nBerngrad+a][nBerngrad+nGamma+i]*=coef
-
+    
+    # Whitney Whitney
     for i in range(3):
         for j in range(3):
             coef=T/6
-            for r in [-1,1]:
+            for q in [-1,1]:
                 for s in [-1,1]:
                     ei=[0,0,0]
-                    ei[(i+r)%3]=1
+                    ei[(i+q)%3]=1
                     ej=[0,0,0]
                     ej[(j+s)%3]=1
                     
                     E=sumVect(ei,ej)
                     bino=2/( fact(E[0])*fact(E[1])*fact(E[2]) )
 
-                    M[nBerngrad+nGamma+i][nBerngrad+nGamma+j]+=r*s*grad[(i-r)%3][(j-s)%3]/bino
+                    M[nBerngrad+nGamma+i][nBerngrad+nGamma+j]+=q*s*grad[(i-q)%3][(j-s)%3]/bino
 
             M[nBerngrad+nGamma+i][nBerngrad+nGamma+j]*=coef
     M[nBerngrad:nBerngrad+nGamma,:nBerngrad]=np.transpose(M[:nBerngrad,nBerngrad:nBerngrad+nGamma])

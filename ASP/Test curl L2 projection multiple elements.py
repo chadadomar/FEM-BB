@@ -27,20 +27,15 @@ np.set_printoptions(precision=5 ,linewidth=10000)
 
 # Right hand side and solution
 def f(x,y):
-    return np.array([y*(1-y)+2,x*(1-x)+2])
-
-def uf(x,y):
-    return np.array([y*(1-y),x*(1-x)])
+    return np.array([1,1])
 
 def g(x,y):
     return np.array([-y,x])
 
 # defining second memebre
-def h(x,y):
-    return np.array([ (1 - 2*y)**2*np.sin(y*(1 - y)) + np.sin(y*(1 - y)) + 2*np.cos(y*(1 - y)) , (1 - 2*x)**2*np.sin(x*(1 - x)) + np.sin(x*(1 - x)) + 2*np.cos(x*(1 - x)) ])  
+def f1(x,y):
+    return np.array([-y*x,x*x*y])  # f=W_1 whitney form
 
-def uh(x,y):
-    return np.array([np.sin(y*(1-y)),np.sin(x*(1-x))]) 
 
 
 
@@ -89,42 +84,14 @@ def global_matrices(r,h):
 
 def assemble_boundary(r,h):
     S,M,F=global_matrices(r,h)
-    I=IndexToDelete(mesh_edges,mesh_points,r)
-    S=np.delete(S, I,0)
-    S=np.delete(S, I,1)
-    M=np.delete(M, I,0)
-    M=np.delete(M, I,1)
-    F=np.delete(F, I,0)
     #print("global mass matrix \n",M)
-    X=np.linalg.solve(S+M,F)  
-    return X,I
-
-def reconstruct(X,I):
-    # creat new vector with newX:
-        # lenth = sum of lengths of X and I
-        # newX[i]=0 for i in I
-    li=len(I)
-    n=len(X)+li
-    newX=np.zeros(n)
-    x=0
-    i=0
-    flag=True
-    for k in range(n):
-        if flag and k==I[i]:
-            i+=1
-            if i==li:
-                flag=False
-        else:
-            newX[k]=X[x]
-            x+=1
-    return newX
+    X=np.linalg.solve(M,F)  
+    return X
 
 
 ### Aribtrary order r:
-def testCurl(r,f,uf):
-    X,I=assemble_boundary(r,f)
-    newX=reconstruct(X,I)
-    #print("I",I)
+def testarbitrary(r,g):
+    X=assemble_boundary(r,g)
     error=0
     for i in range(ntris):
         T=mesh_tris[i]
@@ -139,15 +106,10 @@ def testCurl(r,f,uf):
         for j in range(ndof):
             k,sign=local_to_global(nedges, T, tris_edges[i], i, j, r)
             #print("i j k signe",i,j,k,sign)
-            Coef.append(sign*newX[k])
+            Coef.append(sign*X[k])
         def errf(x,y):
-            return (Eval_curl(Liste,r,Coef,x,y)[0]-uf(x,y)[0])**2 +   (Eval_curl(Liste,r,Coef,x,y)[1]-uf(x,y)[1])**2
-        contribution=quad(Liste, errf, r+1)
-        error+=contribution
-        #print("triangle ", Liste ,"error ",contribution)
-        #print(" BB form ", Coef)
+            return (Eval_curl(Liste,r,Coef,x,y)[0]-g(x,y)[0])**2 +   (Eval_curl(Liste,r,Coef,x,y)[1]-g(x,y)[1])**2
+        error+=quad(Liste, errf, 7)
     print("error", np.sqrt(error))
-    #print("error without square", error)
     
-
     
