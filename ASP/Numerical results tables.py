@@ -31,7 +31,7 @@ sprint = lambda x: '{:.2e}'.format(x)
 
 ps            = (1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
 ks            = (2, 3, 4, 5, 6)
-Taus          = [10**k for k in range(-14,15)]
+Taus          = [10**k for k in range(-9,15)]
 
 # Right hand side and solution
 def f(x,y):
@@ -46,18 +46,14 @@ def curluf(x,y):
 def curlcurluf(x,y):
     return np.array([2,2])
 
-def g(x,y):
-    return np.array([-y,x])
-
-# defining second memebre
-def h(x,y):
-    return np.array([ (1 - 2*y)**2*np.sin(y*(1 - y)) + np.sin(y*(1 - y)) + 2*np.cos(y*(1 - y)) , (1 - 2*x)**2*np.sin(x*(1 - x)) + np.sin(x*(1 - x)) + 2*np.cos(x*(1 - x)) ])  
-
 def uh(x,y):
-    return np.array([np.sin(y*(1-y)),np.sin(x*(1-x))]) 
+    return np.array([np.sin(np.pi*y),np.sin(np.pi*x)]) 
+
+def curlcurluh(x,y):
+    return np.array( [  np.pi**2*np.sin(np.pi*y), np.pi**2*np.sin(np.pi*x) ] )
 
 def curluh(x,y):
-    return (1 - 2*x)*np.cos(x*(1 - x)) - (1 - 2*y)*np.cos(y*(1 - y))
+    return np.pi*np.cos(np.pi*x) - np.pi*np.cos(np.pi*y)
 
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 #                    Creates files which contains results
@@ -112,7 +108,7 @@ def write_table(d, folder, kind):
     fname = os.path.join('txt', fname)
     fname = os.path.join(folder, fname)
     
-    with open(fname, 'w') as f:
+    with open(fname, 'w', encoding="utf-8") as f:
         table = tabulate(rows, headers=headers, tablefmt ='fancy_grid')
         f.write(str(table))
     
@@ -166,7 +162,7 @@ def main(k, p, tau):
     F=np.zeros(ndof)
     
     def rh(x,y):
-        return curlcurluf(x,y)+ tau* uf(x,y)
+        return curlcurluh(x,y)+ tau* uh(x,y)
     
     for i in range(ntris):
         T=mesh_tris[i]
@@ -223,11 +219,11 @@ def main(k, p, tau):
             #print("i j k signe",i,j,k,sign)
             Coef.append(sign*newX[k])
         def L2(x,y):
-            return (Eval_curl(Liste,r,Coef,x,y)[0]-uf(x,y)[0])**2 +   (Eval_curl(Liste,r,Coef,x,y)[1]-uf(x,y)[1])**2
+            return (Eval_curl(Liste,r,Coef,x,y)[0]-uh(x,y)[0])**2 +   (Eval_curl(Liste,r,Coef,x,y)[1]-uh(x,y)[1])**2
         def Hcurl(x,y):
-            return L2(x,y)+  (Eval_curlcurl(Liste,r,Coef,x,y)-curluf(x,y))**2
+            return L2(x,y)+  (Eval_curlcurl(Liste,r,Coef,x,y)-curluh(x,y))**2
         def Energy(x,y):
-            return tau*L2(x,y)+  (Eval_curlcurl(Liste,r,Coef,x,y)-curluf(x,y))**2
+            return tau*L2(x,y)+  (Eval_curlcurl(Liste,r,Coef,x,y)-curluh(x,y))**2
         
         error_L2+=quad(Liste, L2, r+1)
         error_Hcurl+=quad(Liste, Hcurl, r+1)

@@ -48,7 +48,14 @@ def uh(x,y):
 def curluh(x,y):
     return (1 - 2*x)*np.cos(x*(1 - x)) - (1 - 2*y)*np.cos(y*(1 - y))
 
-mesh_points,mesh_tris,mesh_edges,tris_edges=mesh()
+def qh(x,y):
+    return np.array([np.sin(np.pi*y),np.sin(np.pi*x)])
+def curlqh(x,y):
+    return np.pi*np.cos(np.pi*x) - np.pi*np.cos(np.pi*y)
+def q(x,y):
+    return np.array([np.sin(np.pi*y) + np.pi**2*np.sin(np.pi*y) ,np.sin(np.pi*x) +  np.pi**2*np.sin(np.pi*x)])
+
+mesh_points,mesh_tris,mesh_edges,tris_edges=mesh(2)
 ntris=len(mesh_tris)
 nedges=len(mesh_edges)
 
