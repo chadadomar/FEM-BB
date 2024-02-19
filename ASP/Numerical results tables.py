@@ -31,7 +31,7 @@ np.seterr('raise')
 
 ps            = (1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
 ks            = (2, 3, 4, 5, 6)
-Taus          = [10**k for k in range(-14,7)]
+Taus          = [10**k for k in range(1,7)]
 
 # Right hand side and solution
 def f(x,y):
@@ -284,9 +284,9 @@ def main_tables(tau):
 #                               Run tests
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-"""if __name__ == '__main__':
+if __name__ == '__main__':
     for tau in Taus:
-        main_tables(tau = tau)"""
+        main_tables(tau = tau)
 
 
 
