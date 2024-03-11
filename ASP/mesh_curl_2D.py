@@ -49,8 +49,9 @@ def is_point_inside_segment(start, end, point):
 
     return False
 
-# Generating meshes
+# Generating meshes where the area of triangles are less than 1/2^k
 def mesh(k):
+        
     
     #Vertices of the domaain
     #points = [(0,0), (1, 0),  (1, 1),  (0,1), (0,0)]
@@ -99,13 +100,13 @@ def mesh(k):
     #for i in range(number_tris):
         #print(mesh_tris[i],mesh_edges[tris_edges[i]])
 
-    '''plt.triplot(mesh_points[:, 0], mesh_points[:, 1], mesh_tris)
-    for i in range(len(mesh_points)):
-      plt.text(mesh_points[i][0], mesh_points[i][1], str(i), fontsize=13 )
-    plt.show()'''
+    plt.triplot(mesh_points[:, 0], mesh_points[:, 1], mesh_tris)
+    #for i in range(len(mesh_points)):
+      #plt.text(mesh_points[i][0], mesh_points[i][1], str(i), fontsize=13 )
+    plt.show()
 
 
-    return mesh_points,mesh_tris,mesh_edges,tris_edges
+    return mesh_points,mesh_tris,mesh_edges,tris_edges, number_tris
 
 def nbr_globDof(nedges,ntris,r):
     s=0

@@ -31,7 +31,7 @@ np.seterr('raise')
 
 ps            = (1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
 ks            = (2, 3, 4, 5, 6)
-Taus          = [10**k for k in range(1,7)]
+Taus          = [10**k for k in range(-4,4)]
 
 # Right hand side and solution
 def f(x,y):
@@ -165,6 +165,8 @@ def main(k, p, tau):
     r=p
     print('============tau = {tau}, p = {p}, k = {k}============'
           .format(tau = tau, p=p,k=k))
+    
+    tb = time.time()
 
     mesh_points,mesh_tris,mesh_edges,tris_edges=mesh(k)
     ntris=len(mesh_tris)
@@ -217,8 +219,24 @@ def main(k, p, tau):
     F=np.delete(F, I,0)
 
     A=S+tau*M
-
-    X=np.linalg.solve(A, F)
+    
+    num_iters = 0
+    def callback(xk):
+        nonlocal num_iters
+        num_iters+=1
+    
+    X, status = cg(A, F, tol=1e-6, callback=callback , maxiter=3000)
+    
+    te = time.time()
+    
+    if status == 0:
+        success = True
+    else:
+        success = False
+        
+    if num_iters == 3000:
+        num_iters = 'NC'
+        
     newX=reconstruct(X,I)
 
     error_L2=0
@@ -253,7 +271,7 @@ def main(k, p, tau):
     error_Hcurl=np.sqrt(error_Hcurl)
     error_energy=np.sqrt(error_energy)
 
-    info={'err_l2_norm': error_L2, 'err_Hcurl_norm': error_Hcurl, 'err_energy':error_energy, 'cond_2': np.linalg.cond(A)}
+    info={'err_l2_norm': error_L2, 'err_Hcurl_norm': error_Hcurl, 'err_energy':error_energy, 'cond_2': np.linalg.cond(A), 'niter': num_iters, 'success': success, 'CPU_time': te-tb}
 
     return info
 
@@ -272,6 +290,8 @@ def main_tables(tau):
 
             d[p,k] = info
 
+    write_table(d, folder, kind ='niter')
+    write_table(d, folder, kind ='CPU_time')
     write_table(d, folder, kind ='err_l2_norm')
     write_table(d, folder, kind ='cond_2')
     write_table(d, folder, kind ='err_energy')
