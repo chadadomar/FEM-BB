@@ -105,8 +105,8 @@ def mesh(k):
       #plt.text(mesh_points[i][0], mesh_points[i][1], str(i), fontsize=13 )
     plt.show()
 
+    return mesh_points,mesh_tris,mesh_edges,tris_edges
 
-    return mesh_points,mesh_tris,mesh_edges,tris_edges, number_tris
 
 def nbr_globDof(nedges,ntris,r):
     s=0
