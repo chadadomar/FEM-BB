@@ -97,6 +97,17 @@ def Bern(L,alpha,r,x,y):
         res*=lambda2(L, x, y)**alpha[1]
         res*=lambda3(L, x, y)**alpha[2]
         return res
+
+def Bern2dbis(L,BB,p,x,y):
+    I=indexes2D(p)
+    ndof=(p+1)*(p+2)//2
+    res=0
+    for i in range(ndof):
+        alpha=I[i]
+        res+=BB[i]*Bern(L,alpha,p,x,y)
+    return res
+
+
 def gradBern(L,alpha,r,x,y):
     if sum(alpha) != r:
         raise Exception("index of bernstein polynomial not valid")
@@ -217,8 +228,8 @@ def Eval_curlcurl(L,r,C,x,y):
         
         return res
     
-#######################################################################################################
-
+    
+###################################################################################################
 
 
 # Get barycentrc coordinates from cartesian cordinate

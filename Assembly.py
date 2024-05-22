@@ -567,7 +567,7 @@ def CstMassMat3D(n,T):
         ## n polynomial degree
         ## T tetrahedron area
     # Output:
-        #€# Mass matrix M_{i,j}=(Bn,i;Bn,j)
+        ## Mass matrix M_{i,j}=(Bn,i;Bn,j)
     t0=timeit.default_timer()
     In=indexes3D(n)
     l=len(In)

@@ -302,10 +302,10 @@ def main_tables(tau,p):
 #                               Run tests
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-if __name__ == '__main__':
+'''if __name__ == '__main__':
     for tau in Taus:
         for p in ps:
-            main_tables(tau = tau, p=p)
+            main_tables(tau = tau, p=p)'''
 
 
 
