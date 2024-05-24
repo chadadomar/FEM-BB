@@ -49,8 +49,9 @@ def is_point_inside_segment(start, end, point):
 
     return False
 
-# Generating meshes
+# Generating meshes where the area of triangles are less than 1/2^k
 def mesh(k):
+        
     
     #Vertices of the domaain
     #points = [(0,0), (1, 0),  (1, 1),  (0,1), (0,0)]
@@ -99,18 +100,24 @@ def mesh(k):
     #for i in range(number_tris):
         #print(mesh_tris[i],mesh_edges[tris_edges[i]])
 
-    '''plt.triplot(mesh_points[:, 0], mesh_points[:, 1], mesh_tris)
+    plt.triplot(mesh_points[:, 0], mesh_points[:, 1], mesh_tris)
     for i in range(len(mesh_points)):
       plt.text(mesh_points[i][0], mesh_points[i][1], str(i), fontsize=13 )
-    plt.show()'''
-
+    plt.show()
 
     return mesh_points,mesh_tris,mesh_edges,tris_edges
+
 
 def nbr_globDof(nedges,ntris,r):
     s=0
     s+=nedges*r  # number of global functions on edges: whitney + gradient bernstein
     s+=ntris* ( m.comb(r-1,2) + m.comb(r+1,2)-1) # number of global functions : interior gradient Bernstein , bubble gamma 
+    return s
+
+def nbr_globDof_bis(nedges,ntris,r):
+    s=0
+    s+=nedges*r  # number of global functions on edges: whitney + gradient bernstein
+    s+=ntris* 2*m.comb(r,2) # number of global functions : interior gradient Bernstein , bubble gamma 
     return s
 
 def indexes2D(n):
@@ -223,3 +230,75 @@ def IndexToDelete(mesh_edges,mesh_points,r):
                 ind=i*r+j
                 I.append(ind)
     return I
+
+
+def nbr_globDof_H1(nvertices,nedges,ntris,p):
+    #Input:
+        # nvertices: total number of nodes
+        # nedges   : total number of edges
+        # ntris    : total number of triangles
+        # p        : polynomial order
+    #Output:
+        # total number of golable functions       
+    ndof=(p+2)*(p+1)//2
+    nglob_tris= ndof - 3*p
+    s=nvertices
+    s+=nedges*(p-1)  # number of global functions on edge
+    s+=ntris* nglob_tris # number of global functions : interior gradient Bernstein , bubble gamma 
+    return s
+
+def local_to_global_H1(nvertices, nedges, node_tris , edge_tris, tris_ind,local_ind,p):
+    # input:
+        # nvertices: total number of nodes
+        # nedges   : total number of edges
+        # node_tris: global indices of the triangl's nodes
+        # edge_tris: global indices of the triangl's edges
+        # tris_ind : number of the triangle with respect to the mesh
+        # local_ind: index of local basis function
+        # p        : order of FE
+    #Output:
+        # global number of the correspondant basis function:
+            # first global functions are those associated with vertices with same order
+            # Second are edge bernstein:
+                # For an edge, first function is the one corresponding to the point with lower index, and so on
+            # Third are interior  bernstein:
+                # Ordered in lexicographical way
+    T=node_tris
+    E=edge_tris
+    I=indexes2D(p)
+    ndof=(p+2)*(p+1)//2
+    nglob_tris= ndof - 3*p # number of interior global functions per triangle
+    
+    if local_ind <0 or local_ind >=ndof:
+        raise Exception("local inex of basis function is not valid")   
+    elif local_ind==0 :
+        global_ind=T[0]
+    elif local_ind== ndof-1-p:
+        global_ind=T[1]
+    elif local_ind==ndof-1:
+        global_ind=T[2]
+    else:
+        alpha=I[local_ind]
+        if alpha[0]==0:
+            # edge bernstein basis of the edge [T[1],T[2]]
+            if T[1] < T[2]:
+                global_ind= nvertices + E[0]*(p-1) + p-alpha[1]-1
+            else:
+                global_ind= nvertices + E[0]*(p-1) + alpha[1]-1
+        elif alpha[1]==0:
+            # edge bernstein basis of the edge [T[0],T[2]]
+            if T[0]<T[2]:
+                global_ind=nvertices+E[1]*(p-1) + p-alpha[0]-1
+            else:
+                global_ind=nvertices +E[1]*(p-1) + alpha[0]-1
+        elif alpha[2]==0:
+            # edge bernstein basis of the edge [T[0],T[1]]
+            if T[0]<T[1]:
+                global_ind=nvertices+E[2]*(p-1) + p-alpha[0]-1
+            else:
+                global_ind=nvertices+E[2]*(p-1) + alpha[0]-1
+        else:
+            beta=(alpha[0]-1,alpha[1]-1,alpha[2]-1)
+            global_ind= nvertices + nedges*(p-1) + tris_ind * nglob_tris + getIndex2D(p-3, beta)     
+    return global_ind
+

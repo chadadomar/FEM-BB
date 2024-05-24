@@ -29,8 +29,14 @@ np.seterr('raise')
 #                                   Data
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+<<<<<<< HEAD
 ps            = (1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
 ks            = (2, 3, 4, 5, 6)
+=======
+ps            = (1,2,3,4,5,6,7,8)
+ks            = (7,8) #9,10,11,12,13
+ncells        = {2:"4", 3:"8", 4:"16", 5:"44", 6:"101", 7:"215", 8:"401", 9:"800", 10:"1586", 11:"3199", 12:"6354", 13:"12770", 14:"25497", 15:"50917", 16:"101741", 17:"203504", 18:"406760"}
+>>>>>>> 47e6a6275d13f119c3d449c1db4aa8bd086a25e0
 Taus          = [10**k for k in range(-4,5)]
 
 # Right hand side and solution
@@ -81,50 +87,48 @@ def mkdir_p(dir):
         return
     os.makedirs(dir)
 
-def create_folder(tau):
+def create_folder(tau,p):
 
-    tau=str(tau)
+    tau="tau "+str(tau)
+    p  ="p "+str(p)
 
-    folder = 'numerical_results/{tau}'.format(tau=tau)
+    folder = 'numerical_results/{tau}/{p}'.format(tau=tau,p=p)
 
     mkdir_p(os.path.join(folder, 'txt'))
     mkdir_p(os.path.join(folder, 'tex'))
 
     return folder
 
-def write_table(d, folder, kind):
-    headers = ['grid/degree p']
 
-    for p in ps:
-        headers.append(str(p))
+def write_table(d, folder, kind):
+    #headers = ['grid/degree p']
+
+    #for p in ps:
+        #headers.append(str(p))
 
     # add table rows
     rows = []
     for k in ks:
-        ncell = str(2**k)
-        row = ['$' + ncell + ' \\times ' + ncell +  '$']
-        for p in ps:
-            value = d[p, k][kind]
-            if isinstance(value, str):
-                v = value
-            elif isinstance(value, int):
-                v = '$'+str(value) +'$'
-            else:
-                v =  '$'+sprint(value)+'$'
-            row.append(v)
+        ncell = ncells[k]
+        row = ['$' + ncell +  '$']
+        value = d[k][kind]
+        if isinstance(value, str):
+            v = value
+        elif isinstance(value, int):
+            v = '$'+str(value) +'$'
+        else:
+            v =  '$'+sprint(value)+'$'
+        row.append(v)
         rows.append(row)
 
-    table = tabulate(rows, headers=headers)
-
-
-
+    table = tabulate(rows)
 
     fname = '{label}.txt'.format(label=kind)
     fname = os.path.join('txt', fname)
     fname = os.path.join(folder, fname)
 
     with open(fname, 'w', encoding="utf-8") as f:
-        table = tabulate(rows, headers=headers, tablefmt ='fancy_grid')
+        table = tabulate(rows, tablefmt ='fancy_grid')
         f.write(str(table))
 
     fname = '{label}.tex'.format(label=kind)
@@ -132,7 +136,7 @@ def write_table(d, folder, kind):
     fname = os.path.join(folder, fname)
 
     with open(fname, 'w') as f:
-        table = tabulate(rows, headers=headers, tablefmt='latex_raw')
+        table = tabulate(rows, tablefmt='latex_raw')
         f.write(str(table))
 
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -279,16 +283,15 @@ def main(k, p, tau):
 #                             Creates tables
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-def main_tables(tau):
-    folder = create_folder(tau  = tau)
+def main_tables(tau,p):
+    folder = create_folder(tau  = tau, p=p)
     d = {}
-    for p in ps:
-        for k in ks:
-            info = main(k      = k,
-                        p      = p,
-                        tau = tau)
+    for k in ks:
+        info = main(k      = k,
+                    p      = p,
+                    tau = tau)
 
-            d[p,k] = info
+        d[k] = info
 
     write_table(d, folder, kind ='niter')
     write_table(d, folder, kind ='CPU_time')
@@ -304,14 +307,20 @@ def main_tables(tau):
 #                               Run tests
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-if __name__ == '__main__':
+'''if __name__ == '__main__':
     for tau in Taus:
-        main_tables(tau = tau)
+        for p in ps:
+            main_tables(tau = tau, p=p)'''
 
 
 
 
 
+## TO DO : 
+    # make each table concer one couple (tau, p)
+    # Add CPU time table
+    # K's value :  7 -----> 13
+    # K's value for p=1 7 -------> 16
 
 
 
