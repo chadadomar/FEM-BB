@@ -128,6 +128,19 @@ def Gamma(L,alpha,r,x,y):
 # Evaluation of p=C[alpha]*B[alpha]
 # C: vector of coefficient in the 2d curl bernstein
 
+def Eval_grad(L,p,C,x,y):
+    ndof=(p+1)*(p+2)//2
+    if len(C)!= ndof:
+        raise Exception("the size of vector of coefficient is not valid")
+    else:
+        res=np.array([0.,0.])
+        I=indexes2D(p)
+        
+        for i in range(ndof):
+            alpha=I[i]
+            res+=C[i]*gradBern(L,alpha,p,x,y)
+        return res
+
 def Eval_curl(L,r,C,x,y):
     ndof=r*(r+2)
     if len(C)!= ndof:

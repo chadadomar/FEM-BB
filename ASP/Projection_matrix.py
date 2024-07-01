@@ -75,7 +75,7 @@ def Glob_Proj(r,k):
     
     Pglob=np.zeros((nhcurl,2*nh1))
     FlagMatrix=np.zeros((nhcurl,2*nh1))
-    tol=1e-14
+    tol=1e-12
     flag=True
     Bigflag=True
     for ti in range(ntris):
@@ -138,5 +138,25 @@ def Glob_Proj(r,k):
                     
     #return Pglob,FlagMatrix,Bigflag
     return Bigflag
+
+f = open("Projection_test.txt", "a")
+f.close()
+
+f = open("Projection_test.txt", "a")
+f.write("\n")
+f.write("####    tolerance is set to e-12  ##### \n")
+f.close()
+
+for r in range(8,9):
+    for k in range(1,5):
+        if Glob_Proj(r,k):
+            f = open("Projection_test.txt", "a")
+            f.write("r="+str(r)+" and k="+str(k)+" valid \n")
+            f.close()
+        else:
+            f = open("Projection_test.txt", "a")
+            f.write("r="+str(r)+" and k="+str(k)+" not valid \n")
+            f.close()
+        
                 
                 

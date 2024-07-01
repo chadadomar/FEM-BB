@@ -100,10 +100,10 @@ def mesh(k):
     #for i in range(number_tris):
         #print(mesh_tris[i],mesh_edges[tris_edges[i]])
 
-    plt.triplot(mesh_points[:, 0], mesh_points[:, 1], mesh_tris)
+    '''plt.triplot(mesh_points[:, 0], mesh_points[:, 1], mesh_tris)
     for i in range(len(mesh_points)):
       plt.text(mesh_points[i][0], mesh_points[i][1], str(i), fontsize=13 )
-    plt.show()
+    plt.show()'''
 
     return mesh_points,mesh_tris,mesh_edges,tris_edges
 

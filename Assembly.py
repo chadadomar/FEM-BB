@@ -54,7 +54,7 @@ def AirT2D(L):
 
 
 # vertices are orderd counter-clockwise
-def grad2D(L):
+def grad2Dbis(L):
     T=AirT2D(L)
     [x1,y1,x2,y2,x3,y3]=L
     
@@ -72,6 +72,25 @@ def grad2D(L):
     v2=v2/T/2
     v3=v3/T/2
     return np.array([v1,v2,v3])
+
+def SignedAirT2D(L):
+    [x1,y1,x2,y2,x3,y3]=L
+    M=np.array([[1,1,1],[x1,x2,x3],[y1,y2,y3]])
+    return np.linalg.det(M)
+
+def grad2D(L):
+    [x1,y1,x2,y2,x3,y3]=L
+    T=SignedAirT2D(L)
+    
+    v1=np.array([y2-y3,x3-x2])
+    v2=np.array([y3-y1,x1-x3])
+    v3=np.array([y1-y2,x2-x1])
+
+    v1=v1/T
+    v2=v2/T
+    v3=v3/T
+    return np.array([v1,v2,v3])
+    
 
 def sumVect(u,v):
     m=len(u)
@@ -888,7 +907,7 @@ def StiffMat1D(a,b,f,n):
     return S        
 
 ### 2D
- 
+############ !!!!!! there is problem with this one !!!!!!!!!!! ###############
 def StiffMat2D(L,A,n):
     t0=timeit.default_timer()
     G=grad2D(L)

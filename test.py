@@ -12,7 +12,9 @@ from decimal import *
 import matplotlib.pyplot as plt
 from Quadratur_over_triangle import *
 from Evaluation_curl_BBform import *
-
+from scipy.sparse.linalg import cg, gmres, bicgstab, minres
+from tabulate import tabulate
+sprint = lambda x: '{:.2e}'.format(x)
 np.set_printoptions(precision=5)
 
 
@@ -98,7 +100,7 @@ def nbr_glob_Dof(nvertices,nedges,ntris,p):
     s+=ntris* nglob_tris # number of global functions : interior gradient Bernstein , bubble gamma 
     return s
 
-def local_to_global(nvertices, nedges, node_tris , edge_tris, tris_ind,local_ind,p):
+def local_to_globalH1(nvertices, nedges, node_tris , edge_tris, tris_ind,local_ind,p):
     # input:
         # nvertices: total number of nodes
         # nedges   : total number of edges
@@ -289,15 +291,15 @@ def reconstruct(X,I):
 # Test L2 projection
 
 def f(x,y):
-    return x*(x-1)*y*(y-1)
+    return np.exp(y)
 
 def L2projection(p,k):
     mesh_points,mesh_tris,mesh_edges,tris_edges=mesh(k)
-    nvertices=len(mesh_points) # number of domaine points  
+    nvertices=len(mesh_points)          # number of domaine points  
     nedges= len(mesh_edges)
     ntris = len(mesh_tris)
     ndof=nbr_glob_Dof(nvertices,nedges,ntris,p)
-    M=np.zeros((ndof,ndof))             # Golbal stiffness matrix
+    M=np.zeros((ndof,ndof))             # Golbal mass matrix
     B=np.zeros(ndof)                    # Global load vector    
     w=(p+2)*(p+1)//2
     
@@ -312,11 +314,12 @@ def L2projection(p,k):
         Me=MassMat2D(Trig,lambda x,y:1,p) #local stifness matrix
         Be=Moment2D(Trig, f, p) #local load vector
         for i in range(w):
-            I=local_to_global(nvertices, nedges, t, tris_edges[ti], ti, i, p)
+            I=local_to_globalH1(nvertices, nedges, t, tris_edges[ti], ti, i, p)
             B[I]+=Be[i]
             for j in range(w):
-                J=local_to_global(nvertices, nedges, t, tris_edges[ti], ti, j, p)
+                J=local_to_globalH1(nvertices, nedges, t, tris_edges[ti], ti, j, p)
                 M[I][J]+=Me[i][j]                   
+    
     X=np.linalg.solve(M,B)
     error=0
     for ti in range(ntris):
@@ -331,7 +334,7 @@ def L2projection(p,k):
             lam=BarCord2d(Trig,x,y)
             BB=[]
             for j in range(w):
-                J=local_to_global(nvertices, nedges, t,  tris_edges[ti], ti, j, p)
+                J=local_to_globalH1(nvertices, nedges, t,  tris_edges[ti], ti, j, p)
                 BB.append(X[J])
             return (f(x,y)-deCasteljau2D(lam,BB,p))**2
         error+=quad(Trig, func, p+1)
@@ -345,8 +348,8 @@ def L2projection(p,k):
 def A(x,y):
     return np.array([[1,0],[1,0]])
 
-def v(x,y):
-    return np.sin(np.pi*x)*np.sin(np.pi*y)
+#def v(x,y):
+    #return np.sin(np.pi*x)*np.sin(np.pi*y)
 
 
 def sol_poisson_2D(p,k):
@@ -367,48 +370,77 @@ def sol_poisson_2D(p,k):
         v2=mesh_points[t[2]]
         ##liste of vertices's coordinates
         Trig=[v0[0],v0[1],v1[0],v1[1], v2[0],v2[1]] 
-        Se=StiffMat2D(Trig, A, p) #local stifness matrix
-        Be=Moment2D(Trig, lambda x,y:-2*(x*(x-1)+y*(y-1)) , p) #local load vector
+        Se=cst_StiffMat_2D(Trig,np.eye(2), p) #local stifness matrix
+        Be=Moment2D(Trig, lambda x,y:2*(x*(1-x)+y*(1-y)) , p) #local load vector
+        #Be=Moment2D(Trig, lambda x,y:0 , p)
         for i in range(w):
-            I=local_to_global(nvertices, nedges, t, tris_edges[ti], ti, i, p)
+            I=local_to_globalH1(nvertices, nedges, t, tris_edges[ti], ti, i, p)
             B[I]+=Be[i]
             for j in range(w):
-                J=local_to_global(nvertices, nedges, t, tris_edges[ti], ti, j, p)
-                S[I][J]+=Se[i][j]                   
-    Bound=IndexToDelete(mesh_edges, mesh_points, p)       
+                J=local_to_globalH1(nvertices, nedges, t, tris_edges[ti], ti, j, p)
+                S[I][J]+=Se[i][j]   
+                    
+    
+
+    Bound=IndexToDelete(mesh_edges, mesh_points, p) 
     S=np.delete(S,Bound,0)
     S=np.delete(S,Bound,1)
     B=np.delete(B,Bound,0)
     X=np.linalg.solve(S,B)
-    print("Stiffnes matrix ",S ,"\n")
-    print("Load vector ",B ,"\n")
-    print("vector X",X)
     C=reconstruct(X, Bound)
-    #C=X
-    print("vector C",C)
     error=0
     for ti in range(ntris):
-        print("triangle inex ", ti)
+        #print("triangle inex ", ti)
         t=mesh_tris[ti]
-        print("indices of triangle vertices ",t)
+        #print("indices of triangle vertices ",t)
         # vertex of the triangle/elem t
         v0=mesh_points[t[0]]
         v1=mesh_points[t[1]]
         v2=mesh_points[t[2]]
         #liste of vertices's coordinates
         Trig=[v0[0],v0[1],v1[0],v1[1], v2[0],v2[1]] 
-        print("liste of vertices's coordinates ",Trig)
+        #print("liste of vertices's coordinates ",Trig)
         def func(x,y):
             lam=BarCord2d(Trig,x,y)
             BB=[]
             for j in range(w):
-                J=local_to_global(nvertices, nedges, t,  tris_edges[ti], ti, j, p)
+                J=local_to_globalH1(nvertices, nedges, t,  tris_edges[ti], ti, j, p)
                 BB.append(C[J])
-            return (x*(x-1)*y*(y-1)-deCasteljau2D(lam,BB,p))**2
+            return (x*(1-x)*y*(1-y)-deCasteljau2D(lam,BB,p))**2
+            #return (deCasteljau2D(lam,BB,p))**2
         partial=quad(Trig, func, p)
         error+=partial
-        print("error tring "+str(ti), partial)
-    #error=np.sqrt(error)
-    print("{:.2e}".format(error))
+        #print("error tring "+str(ti), partial)
+    error=np.sqrt(error)
+    #print("{:.2e}".format(error))
+    return error
 
+ps=(2,3,4,5,6,7)
+ks=(1,2,3,4,5,6,7,8)
 
+headers = ['grid/degree p']
+
+for p in ps:
+    headers.append(str(p))
+
+# add table rows
+rows = []
+for k in ks:
+    ncell = str(k)
+    row = [ncell]
+    for p in ps:
+        value = sol_poisson_2D(p,k)
+        v = "{:.2e}".format(value) 
+        if isinstance(value, str):
+            v = value
+        elif isinstance(value, int):
+            v = '$'+str(value) +'$'
+        else:
+            v =  '$'+sprint(value)+'$' 
+        row.append(v)
+    rows.append(row)
+
+table = tabulate(rows, headers=headers,tablefmt ='fancy_grid')
+f = open("results after correction.txt", "w")
+f.write(str(table))   
+f.close()
