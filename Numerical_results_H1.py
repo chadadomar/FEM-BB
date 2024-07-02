@@ -4,9 +4,7 @@
 
 
 from mesh_curl_2D import *
-from Mass_curl_2d import *
-from Stiffness_curl_2d import *
-from Loadvector_curl_2d import *
+from Assembly import *
 from Evaluation_curl_BBform import *
 from Quadratur_over_triangle import *
 
@@ -30,13 +28,11 @@ np.seterr('raise')
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
-ps            = (1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
-ks            = (2, 3, 4, 5, 6)
-
-#ps            = (1,2,3,4,5,6,7,8)
-#ks            = (7,8) #9,10,11,12,13
+ps            = (1, 2, 3, 4, 5, 6, 7)
+ks            = (2, 3, 4, 5, 6, 7, 8)
+rtol          = 1e-15
 ncells        = {2:"4", 3:"8", 4:"16", 5:"44", 6:"101", 7:"215", 8:"401", 9:"800", 10:"1586", 11:"3199", 12:"6354", 13:"12770", 14:"25497", 15:"50917", 16:"101741", 17:"203504", 18:"406760"}
-Taus          = [10**k for k in range(-4,5)]
+Kinds         =('niter','CPU_time','err_l2_norm','cond_2','err_L2_projection','err_H1_norm')
 
 # Right hand side and solution
 def u2(x,y):
@@ -56,69 +52,6 @@ def u1(x,y):
 
 def gradu1(x,y):
     return np.array([-2*x*y*(1-y),-2*x*y*(1-x)])
-
-#++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-#                    Creates files which contains results
-#++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-
-def mkdir_p(dir):
-    # type: (unicode) -> None
-    if os.path.isdir(dir):
-        return
-    os.makedirs(dir)
-
-def create_folder(tau,p):
-
-    tau="tau "+str(tau)
-    p  ="p "+str(p)
-
-    folder = 'numerical_results/{tau}/{p}'.format(tau=tau,p=p)
-
-    mkdir_p(os.path.join(folder, 'txt'))
-    mkdir_p(os.path.join(folder, 'tex'))
-
-    return folder
-
-
-def write_table(d, folder, kind):
-    #headers = ['grid/degree p']
-
-    #for p in ps:
-        #headers.append(str(p))
-
-    # add table rows
-    rows = []
-    for k in ks:
-        ncell = ncells[k]
-        row = ['$' + ncell +  '$']
-        value = d[k][kind]
-        if isinstance(value, str):
-            v = value
-        elif isinstance(value, int):
-            v = '$'+str(value) +'$'
-        else:
-            v =  '$'+sprint(value)+'$'
-        row.append(v)
-        rows.append(row)
-
-    table = tabulate(rows)
-
-    fname = '{label}.txt'.format(label=kind)
-    fname = os.path.join('txt', fname)
-    fname = os.path.join(folder, fname)
-
-    with open(fname, 'w', encoding="utf-8") as f:
-        table = tabulate(rows, tablefmt ='fancy_grid')
-        f.write(str(table))
-
-    fname = '{label}.tex'.format(label=kind)
-    fname = os.path.join('tex', fname)
-    fname = os.path.join(folder, fname)
-
-    with open(fname, 'w') as f:
-        table = tabulate(rows, tablefmt='latex_raw')
-        f.write(str(table))
 
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 #                    The main function
@@ -163,6 +96,60 @@ def IndexToDelete_H1(mesh_edges,mesh_points,p):
                 I.append(ind)
     return I
 
+def local_to_globalH1(nvertices, nedges, node_tris , edge_tris, tris_ind,local_ind,p):
+    # input:
+        # nvertices: total number of nodes
+        # nedges   : total number of edges
+        # node_tris: global indices of the triangl's nodes
+        # edge_tris: global indices of the triangl's edges
+        # tris_ind : number of the triangle with respect to the mesh
+        # local_ind: index of local basis function
+        # p        : order of FE
+    #Output:
+        # global number of the correspondant basis function:
+            # first global functions are those associated with vertices with same order
+            # Second are edge bernstein:
+                # For an edge, first function is the one corresponding to the point with lower index, and so on
+            # Third are interior  bernstein:
+                # Ordered in lexicographical way
+    T=node_tris
+    E=edge_tris
+    I=indexes2D(p)
+    ndof=(p+2)*(p+1)//2
+    nglob_tris= ndof - 3*p # number of interior global functions per triangle
+    
+    if local_ind <0 or local_ind >=ndof:
+        raise Exception("local inex of basis function is not valid")   
+    elif local_ind==0 :
+        global_ind=T[0]
+    elif local_ind== ndof-1-p:
+        global_ind=T[1]
+    elif local_ind==ndof-1:
+        global_ind=T[2]
+    else:
+        alpha=I[local_ind]
+        if alpha[0]==0:
+            # edge bernstein basis of the edge [T[1],T[2]]
+            if T[1] < T[2]:
+                global_ind= nvertices + E[0]*(p-1) + p-alpha[1]-1
+            else:
+                global_ind= nvertices + E[0]*(p-1) + alpha[1]-1
+        elif alpha[1]==0:
+            # edge bernstein basis of the edge [T[0],T[2]]
+            if T[0]<T[2]:
+                global_ind=nvertices+E[1]*(p-1) + p-alpha[0]-1
+            else:
+                global_ind=nvertices +E[1]*(p-1) + alpha[0]-1
+        elif alpha[2]==0:
+            # edge bernstein basis of the edge [T[0],T[1]]
+            if T[0]<T[1]:
+                global_ind=nvertices+E[2]*(p-1) + p-alpha[0]-1
+            else:
+                global_ind=nvertices+E[2]*(p-1) + alpha[0]-1
+        else:
+            beta=(alpha[0]-1,alpha[1]-1,alpha[2]-1)
+            global_ind= nvertices + nedges*(p-1) + tris_ind * nglob_tris + getIndex2D(p-3, beta)     
+    return global_ind
 
 def reconstruct(X,I):
     # creat new vector with newX:
@@ -187,7 +174,7 @@ def reconstruct(X,I):
 
 def main(k, p):
     print('============ p = {p}, k = {k}============'
-          .format(tau = tau, p=p,k=k))
+          .format(p=p,k=k))
     
     tb = time.time()
 
@@ -195,13 +182,14 @@ def main(k, p):
     nvertices=len(mesh_points)          # number of domaine points  
     nedges= len(mesh_edges)
     ntris = len(mesh_tris)
-    ndof=nbr_glob_Dof(nvertices,nedges,ntris,p) # global dof for H1
+    ndof=nbr_globDof_H1(nvertices,nedges,ntris,p) # global dof for H1
 
 
 
     M=np.zeros((ndof,ndof))             # Golbal mass matrix
     S=np.zeros((ndof,ndof))             # Golbal stiffness matrix
-    B=np.zeros(ndof)                    # Global load vector    
+    B=np.zeros(ndof)                    # Global load vector 
+    F=np.zeros(ndof)
     w=(p+2)*(p+1)//2
 
 
@@ -219,11 +207,11 @@ def main(k, p):
         Fe=Moment2D(Trig, u1 , p)                  #local load vector
 
         for i in range(w):
-            I=local_to_global_H1(nvertices, nedges, t, tris_edges[ti], ti, i, p)
+            I=local_to_globalH1(nvertices, nedges, t, tris_edges[ti], ti, i, p)
             B[I]+=Be[i]
             F[I]+=Fe[i]
             for j in range(w):
-                J=local_to_global_H1(nvertices, nedges, t, tris_edges[ti], ti, j, p)
+                J=local_to_globalH1(nvertices, nedges, t, tris_edges[ti], ti, j, p)
                 S[I][J]+=Se[i][j]
                 M[I][J]+=Me[i][j]
                     
@@ -240,7 +228,7 @@ def main(k, p):
         nonlocal num_iters
         num_iters+=1
     
-    X, status = cg(A, B, tol=1e-6, callback=callback , maxiter=3000)
+    X, status = cg(A, B, rtol=rtol, callback=callback , maxiter=3000)
     
     te = time.time()
     
@@ -270,10 +258,9 @@ def main(k, p):
             lam=BarCord2d(Trig,x,y)
             BB=[]
             for j in range(w):
-                J=local_to_global_H1(nvertices, nedges, t,  tris_edges[ti], ti, j, p)
+                J=local_to_globalH1(nvertices, nedges, t,  tris_edges[ti], ti, j, p)
                 BB.append(U[J])
             return (u1(x,y)-deCasteljau2D(lam,BB,p))**2
-        
         def L2(x,y):
             lam=BarCord2d(Trig,x,y)
             BB=[]
@@ -281,10 +268,13 @@ def main(k, p):
                 J=local_to_globalH1(nvertices, nedges, t,  tris_edges[ti], ti, j, p)
                 BB.append(C[J])
             return (u1(x,y)-deCasteljau2D(lam,BB,p))**2
-        
         def H1(x,y):
-            return L2(x,y) +  (Eval_grad(Trig,p,BB,x,y)-gradu1(x,y))[0]**2 + (Eval_grad(Trig,p,BB,x,y)-gradu1(x,y))[1]**2
-
+            lam=BarCord2d(Trig,x,y)
+            BB=[]
+            for j in range(w):
+                J=local_to_global_H1(nvertices, nedges, t,  tris_edges[ti], ti, j, p)
+                BB.append(C[J])
+            return (u1(x,y)-deCasteljau2D(lam,BB,p))**2 +  (Eval_grad(Trig,p,BB,x,y)-gradu1(x,y))[0]**2 + (Eval_grad(Trig,p,BB,x,y)-gradu1(x,y))[1]**2
 
         error_L2+=quad(Trig, L2, p)
         error_L2_projection+=quad(Trig,L2_projection,p)
@@ -298,48 +288,41 @@ def main(k, p):
 
     return info
 
-#++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-#                             Creates tables
-#++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-def main_tables(tau,p):
-    folder = create_folder(tau  = tau, p=p)
-    d = {}
+
+
+
+
+for kind in Kinds:
+    #if kind=='err_l2_norm':
+    headers = ['grid/degree p']
+    
+    for p in ps:
+        headers.append(str(p))
+        # add table rows
+    rows = []
     for k in ks:
-        info = main(k      = k,
-                    p      = p,
-                    tau = tau)
-
-        d[k] = info
-
-    write_table(d, folder, kind ='niter')
-    write_table(d, folder, kind ='CPU_time')
-    write_table(d, folder, kind ='err_l2_norm')
-    write_table(d, folder, kind ='cond_2')
-    write_table(d, folder, kind ='err_energy')
-    write_table(d, folder, kind ='err_Hcurl_norm')
-
-
-
-
-#++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-#                               Run tests
-#++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-'''if __name__ == '__main__':
-    for tau in Taus:
+        ncell = ncells[k]
+        row = ['$' + ncell +  '$']
         for p in ps:
-            main_tables(tau = tau, p=p)'''
+            d=main(k,p)
+            value = d[kind]
+            v = "{:.2e}".format(value) 
+            if isinstance(value, str):
+                v = value
+            elif isinstance(value, int):
+                v = '$'+str(value) +'$'
+            else:
+                v =  '$'+sprint(value)+'$' 
+            row.append(v)
+        rows.append(row)
+    
+    table = tabulate(rows, headers=headers,tablefmt ='fancy_grid')
+    f = open("results_"+kind, "w")
+    f.write("solving poisson equation on (0,1)^2, source is given by f(x,y)=2*(x*(1-x)+y*(1-y)), exact solution is given by u(x,y)=x*(1-x)*y*(1-y), discrete linear system solved using cg with rtol="+str(rtol)+" \n")
+    f.write(str(table))   
+    f.close()
 
-
-
-
-
-## TO DO : 
-    # make each table concer one couple (tau, p)
-    # Add CPU time table
-    # K's value :  7 -----> 13
-    # K's value for p=1 7 -------> 16
 
 
 
