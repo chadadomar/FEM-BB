@@ -51,7 +51,7 @@ def u1(x,y):
     return x*(1-x)*y*(1-y)
 
 def gradu1(x,y):
-    return np.array([-2*x*y*(1-y),-2*x*y*(1-x)])
+    return np.array([(1-2*x)*y*(1-y),(1-2*y)*x*(1-x)])
 
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 #                    The main function
@@ -202,9 +202,9 @@ def main(k, p):
         ##liste of vertices's coordinates
         Trig=[v0[0],v0[1],v1[0],v1[1], v2[0],v2[1]] 
         Se=cst_StiffMat_2D(Trig,np.eye(2), p)       #local stifness matrix
-        Be=Moment2D(Trig, scd1 , p)                  #local load vector
+        Be=Moment2D(Trig, scd2 , p)                  #local load vector
         Me=MassMat2D(Trig,lambda x,y:1,p)           #local stifness matrix
-        Fe=Moment2D(Trig, u1 , p)                  #local load vector
+        Fe=Moment2D(Trig, u2 , p)                  #local load vector
 
         for i in range(w):
             I=local_to_globalH1(nvertices, nedges, t, tris_edges[ti], ti, i, p)
@@ -260,21 +260,21 @@ def main(k, p):
             for j in range(w):
                 J=local_to_globalH1(nvertices, nedges, t,  tris_edges[ti], ti, j, p)
                 BB.append(U[J])
-            return (u1(x,y)-deCasteljau2D(lam,BB,p))**2
+            return (u2(x,y)-deCasteljau2D(lam,BB,p))**2
         def L2(x,y):
             lam=BarCord2d(Trig,x,y)
             BB=[]
             for j in range(w):
                 J=local_to_globalH1(nvertices, nedges, t,  tris_edges[ti], ti, j, p)
                 BB.append(C[J])
-            return (u1(x,y)-deCasteljau2D(lam,BB,p))**2
+            return (u2(x,y)-deCasteljau2D(lam,BB,p))**2
         def H1(x,y):
             lam=BarCord2d(Trig,x,y)
             BB=[]
             for j in range(w):
                 J=local_to_global_H1(nvertices, nedges, t,  tris_edges[ti], ti, j, p)
                 BB.append(C[J])
-            return (u1(x,y)-deCasteljau2D(lam,BB,p))**2 +  (Eval_grad(Trig,p,BB,x,y)-gradu1(x,y))[0]**2 + (Eval_grad(Trig,p,BB,x,y)-gradu1(x,y))[1]**2
+            return (u2(x,y)-deCasteljau2D(lam,BB,p))**2 +  (Eval_grad(Trig,p,BB,x,y)-gradu2(x,y))[0]**2 + (Eval_grad(Trig,p,BB,x,y)-gradu2(x,y))[1]**2
 
         error_L2+=quad(Trig, L2, p)
         error_L2_projection+=quad(Trig,L2_projection,p)
@@ -294,34 +294,34 @@ def main(k, p):
 
 
 for kind in Kinds:
-    #if kind=='err_l2_norm':
-    headers = ['grid/degree p']
-    
-    for p in ps:
-        headers.append(str(p))
-        # add table rows
-    rows = []
-    for k in ks:
-        ncell = ncells[k]
-        row = ['$' + ncell +  '$']
+    if kind=='err_H1_norm':
+        headers = ['grid/degree p']
+        
         for p in ps:
-            d=main(k,p)
-            value = d[kind]
-            v = "{:.2e}".format(value) 
-            if isinstance(value, str):
-                v = value
-            elif isinstance(value, int):
-                v = '$'+str(value) +'$'
-            else:
-                v =  '$'+sprint(value)+'$' 
-            row.append(v)
-        rows.append(row)
-    
-    table = tabulate(rows, headers=headers,tablefmt ='fancy_grid')
-    f = open("results_"+kind, "w")
-    f.write("solving poisson equation on (0,1)^2, source is given by f(x,y)=2*(x*(1-x)+y*(1-y)), exact solution is given by u(x,y)=x*(1-x)*y*(1-y), discrete linear system solved using cg with rtol="+str(rtol)+" \n")
-    f.write(str(table))   
-    f.close()
+            headers.append(str(p))
+            # add table rows
+        rows = []
+        for k in ks:
+            ncell = ncells[k]
+            row = ['$' + ncell +  '$']
+            for p in ps:
+                d=main(k,p)
+                value = d[kind]
+                v = "{:.2e}".format(value) 
+                if isinstance(value, str):
+                    v = value
+                elif isinstance(value, int):
+                    v = '$'+str(value) +'$'
+                else:
+                    v =  '$'+sprint(value)+'$' 
+                row.append(v)
+            rows.append(row)
+        
+        table = tabulate(rows, headers=headers,tablefmt ='fancy_grid')
+        f = open("results_"+kind, "w")
+        f.write("solving poisson equation on (0,1)^2, source is given by f(x,y)=2*(x*(1-x)+y*(1-y)), exact solution is given by u(x,y)=x*(1-x)*y*(1-y), discrete linear system solved using cg with rtol="+str(rtol)+" \n")
+        f.write(str(table))   
+        f.close()
 
 
 
