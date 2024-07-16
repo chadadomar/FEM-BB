@@ -135,7 +135,7 @@ def mass2d(L,r):
     
     M=np.zeros((ndof,ndof))
     
-    # Nabla Nabla
+    # Gradient Gradient
     for i in range(nBerngrad):
         for j in range(nBerngrad):
             coef=2*(r**2)*(fact(p)**2)*T/ fact(2*r)
@@ -154,7 +154,7 @@ def mass2d(L,r):
                             M[i][j]+= multifact(sumVect(alpha,beta), alpha)* grad[k][l]
             M[i][j]*=coef   
     
-    # Nabla Gamma
+    # Gradient Gamma
     for i in range(nBerngrad):
         for j in range(nGamma):
             coef=2*(r**2)*(fact(p)**2)*T/ fact(2*r+1)
@@ -178,7 +178,7 @@ def mass2d(L,r):
                         M[i][j+nBerngrad]+=x
             M[i][j+nBerngrad]*=coef
     
-    # Nabla Whitney
+    # Gradient Whitney
     for a in range(nBerngrad):
         for i in range(3):
             coef=T/m.comb(r+2,2)

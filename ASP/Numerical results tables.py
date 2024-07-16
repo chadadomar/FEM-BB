@@ -10,6 +10,7 @@ from Loadvector_curl_2d import *
 from Evaluation_curl_BBform import *
 from Quadratur_over_triangle import *
 
+
 import numpy as np
 import time
 import os
@@ -36,7 +37,6 @@ ks            = (2, 3, 4, 5, 6)
 ps            = (1,2,3,4,5,6,7,8)
 ks            = (7,8) #9,10,11,12,13
 ncells        = {2:"4", 3:"8", 4:"16", 5:"44", 6:"101", 7:"215", 8:"401", 9:"800", 10:"1586", 11:"3199", 12:"6354", 13:"12770", 14:"25497", 15:"50917", 16:"101741", 17:"203504", 18:"406760"}
->>>>>>> 47e6a6275d13f119c3d449c1db4aa8bd086a25e0
 Taus          = [10**k for k in range(-4,5)]
 
 # Right hand side and solution

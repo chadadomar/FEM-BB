@@ -291,7 +291,10 @@ def reconstruct(X,I):
 # Test L2 projection
 
 def f(x,y):
-    return np.exp(y)
+    return 2*(np.pi**2)*np.sin(np.pi*x) * np.sin(np.pi*y)
+
+def u(x,y):
+    return np.sin(np.pi*y) * np.sin(np.pi*x)
 
 def L2projection(p,k):
     mesh_points,mesh_tris,mesh_edges,tris_edges=mesh(k)
@@ -351,6 +354,10 @@ def A(x,y):
 #def v(x,y):
     #return np.sin(np.pi*x)*np.sin(np.pi*y)
 
+def f2(x,y):
+    return 2*(x*(1-x)+y*(1-y))
+def u2(x,y):
+    return x*(1-x)*y*(1-y)
 
 def sol_poisson_2D(p,k):
     mesh_points,mesh_tris,mesh_edges,tris_edges=mesh(k)
@@ -371,7 +378,7 @@ def sol_poisson_2D(p,k):
         ##liste of vertices's coordinates
         Trig=[v0[0],v0[1],v1[0],v1[1], v2[0],v2[1]] 
         Se=cst_StiffMat_2D(Trig,np.eye(2), p) #local stifness matrix
-        Be=Moment2D(Trig, lambda x,y:2*(x*(1-x)+y*(1-y)) , p) #local load vector
+        Be=Moment2D(Trig, f , p) #local load vector
         #Be=Moment2D(Trig, lambda x,y:0 , p)
         for i in range(w):
             I=local_to_globalH1(nvertices, nedges, t, tris_edges[ti], ti, i, p)
@@ -380,8 +387,6 @@ def sol_poisson_2D(p,k):
                 J=local_to_globalH1(nvertices, nedges, t, tris_edges[ti], ti, j, p)
                 S[I][J]+=Se[i][j]   
                     
-    
-
     Bound=IndexToDelete(mesh_edges, mesh_points, p) 
     S=np.delete(S,Bound,0)
     S=np.delete(S,Bound,1)
@@ -390,32 +395,24 @@ def sol_poisson_2D(p,k):
     C=reconstruct(X, Bound)
     error=0
     for ti in range(ntris):
-        #print("triangle inex ", ti)
         t=mesh_tris[ti]
-        #print("indices of triangle vertices ",t)
-        # vertex of the triangle/elem t
         v0=mesh_points[t[0]]
         v1=mesh_points[t[1]]
         v2=mesh_points[t[2]]
-        #liste of vertices's coordinates
         Trig=[v0[0],v0[1],v1[0],v1[1], v2[0],v2[1]] 
-        #print("liste of vertices's coordinates ",Trig)
         def func(x,y):
             lam=BarCord2d(Trig,x,y)
             BB=[]
             for j in range(w):
                 J=local_to_globalH1(nvertices, nedges, t,  tris_edges[ti], ti, j, p)
                 BB.append(C[J])
-            return (x*(1-x)*y*(1-y)-deCasteljau2D(lam,BB,p))**2
-            #return (deCasteljau2D(lam,BB,p))**2
+            return (u(x,y)-deCasteljau2D(lam,BB,p))**2  
         partial=quad(Trig, func, p)
         error+=partial
-        #print("error tring "+str(ti), partial)
     error=np.sqrt(error)
-    #print("{:.2e}".format(error))
     return error
 
-ps=(2,3,4,5,6,7)
+'''ps=(2,3,4,5,6,7)
 ks=(1,2,3,4,5,6,7,8)
 
 headers = ['grid/degree p']
@@ -443,4 +440,4 @@ for k in ks:
 table = tabulate(rows, headers=headers,tablefmt ='fancy_grid')
 f = open("results after correction.txt", "w")
 f.write(str(table))   
-f.close()
+f.close()'''

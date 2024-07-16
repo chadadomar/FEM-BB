@@ -11,6 +11,15 @@ import matplotlib.pyplot as plt
 import numpy as np
 import math as m
 
+#check if a point is on the boundary
+def Onboundary(P):
+    x=P[0]
+    y=P[1]
+    if x*y*(1-x)*(1-y)==0:
+        return True
+    else:
+        return False
+
 
 #check if an edge is on the boundary of the unit square [0,1]^2
 def EdgeOnboundary(v,u):
@@ -302,3 +311,21 @@ def local_to_global_H1(nvertices, nedges, node_tris , edge_tris, tris_ind,local_
             global_ind= nvertices + nedges*(p-1) + tris_ind * nglob_tris + getIndex2D(p-3, beta)     
     return global_ind
 
+# Collect indices of globale functions non vanishing on boundary of [0,1]^2
+def IndexToDelete_H1(mesh_edges,mesh_points,p):
+    # retrun sorted liste of indices of global functions non vanishing on boundary of [0,1]^2
+    I=[]
+    nedges=len(mesh_edges)
+    nvertices=  len(mesh_points)
+    for i in range(nvertices):
+        if Onboundary(mesh_points[i]):
+            I.append(i)
+    for i in range(nedges):
+        E=mesh_edges[i]
+        p1=mesh_points[E[0]]
+        p2=mesh_points[E[1]]
+        if EdgeOnboundary(p1,p2):
+            for j in range(p-1):
+                ind=nvertices + i*(p-1)+j
+                I.append(ind)
+    return I

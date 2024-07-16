@@ -28,21 +28,24 @@ np.seterr('raise')
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
-ps            = (1, 2, 3, 4, 5, 6, 7)
-ks            = (2, 3, 4, 5, 6, 7, 8)
+#ps            = (1, 2, 3, 4, 5, 6, 7)
+ps            = (5,6,7)
+#ks            = (2, 3, 4, 5, 6, 7, 8)
+ks            = (9,10,11)
 rtol          = 1e-15
 ncells        = {2:"4", 3:"8", 4:"16", 5:"44", 6:"101", 7:"215", 8:"401", 9:"800", 10:"1586", 11:"3199", 12:"6354", 13:"12770", 14:"25497", 15:"50917", 16:"101741", 17:"203504", 18:"406760"}
-Kinds         =('niter','CPU_time','err_l2_norm','cond_2','err_L2_projection','err_H1_norm')
+#Kinds         =('niter','CPU_time','err_l2_norm','cond_2','err_L2_projection','err_H1_norm')
+Kinds         =('err_L2_projection','err_H1_norm')
 
 # Right hand side and solution
 def u2(x,y):
     return np.sin(np.pi*y) * np.sin(np.pi*x)
 
 def gradu2(x,y):
-    return np.array( [  np.pi*np.sin(np.pi*y)*np.cos(np.pi*x), np.pi*np.sin(np.pi*x)*np.cos(np.pi*y) ] )
+    return np.array( [  (np.pi) * np.cos(np.pi*x) * np.sin(np.pi*y) , (np.pi) * np.sin(np.pi*x) * np.cos(np.pi*y) ] )
 
 def scd2(x,y):
-    return np.pi**2*u2(x,y)
+    return 2*(np.pi**2)*u2(x,y)
 
 def scd1(x,y):
     return 2*(x*(1-x)+y*(1-y))
@@ -294,34 +297,33 @@ def main(k, p):
 
 
 for kind in Kinds:
-    if kind=='err_H1_norm':
-        headers = ['grid/degree p']
-        
+    headers = ['grid/degree p']
+    
+    for p in ps:
+        headers.append(str(p))
+        # add table rows
+    rows = []
+    for k in ks:
+        ncell = ncells[k]
+        row = ['$' + ncell +  '$']
         for p in ps:
-            headers.append(str(p))
-            # add table rows
-        rows = []
-        for k in ks:
-            ncell = ncells[k]
-            row = ['$' + ncell +  '$']
-            for p in ps:
-                d=main(k,p)
-                value = d[kind]
-                v = "{:.2e}".format(value) 
-                if isinstance(value, str):
-                    v = value
-                elif isinstance(value, int):
-                    v = '$'+str(value) +'$'
-                else:
-                    v =  '$'+sprint(value)+'$' 
-                row.append(v)
-            rows.append(row)
-        
-        table = tabulate(rows, headers=headers,tablefmt ='fancy_grid')
-        f = open("results_"+kind, "w")
-        f.write("solving poisson equation on (0,1)^2, source is given by f(x,y)=2*(x*(1-x)+y*(1-y)), exact solution is given by u(x,y)=x*(1-x)*y*(1-y), discrete linear system solved using cg with rtol="+str(rtol)+" \n")
-        f.write(str(table))   
-        f.close()
+            d=main(k,p)
+            value = d[kind]
+            v = "{:.2e}".format(value) 
+            if isinstance(value, str):
+                v = value
+            elif isinstance(value, int):
+                v = '$'+str(value) +'$'
+            else:
+                v =  '$'+sprint(value)+'$' 
+            row.append(v)
+        rows.append(row)
+    
+    table = tabulate(rows, headers=headers,tablefmt ='fancy_grid')
+    f = open("results_"+kind, "w")
+    f.write("solving poisson equation on (0,1)^2, source is given by f(x,y)=2*pi**2*sin(pi*x) * sin(pi*y), exact solution is given by u(x,y)=sin(pi*x) * sin(pi*y), discrete linear system solved using cg with rtol="+str(rtol)+" \n")
+    f.write(str(table))   
+    f.close()
 
 
 
