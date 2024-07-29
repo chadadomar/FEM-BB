@@ -1,0 +1,13 @@
+np.linalg.inv :
+
+Max Q^-1 = 4.902744876744691e-13
+Max L^-1 = 3.19154425110213e-14
+
+scipy.linalg.pinvh:
+
+Max Q^-1 = 2.1316282072803006e-14
+Max L^-1 = 6.106226635438361e-16
+
+Solution is to take mean:
+
+Q^-1 = (Q^-1 + T.Q^-1)/2
