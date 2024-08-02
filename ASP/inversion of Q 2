@@ -1,0 +1,92 @@
+inversion of Q by 
+'''
+Qinv=fast_positive_definite_inverse(Q)
+'''
+
+We mesure max(abs(Q*Qinv - I)):
+
+ loss of symmetry for r=1 and k=2
+error is  1.1102230246251565e-16
+ loss of symmetry for r=2 and k=2
+error is  2.220446049250313e-16
+ loss of symmetry for r=3 and k=2
+error is  4.440892098500626e-16
+ loss of symmetry for r=4 and k=2
+error is  1.1102230246251565e-15
+ loss of symmetry for r=5 and k=2
+error is  2.8009713817420912e-15
+ loss of symmetry for r=6 and k=2
+error is  7.04824610695052e-15
+ loss of symmetry for r=7 and k=2
+error is  2.5194899827964797e-14
+ loss of symmetry for r=1 and k=3
+error is  0.0
+ loss of symmetry for r=2 and k=3
+error is  8.881784197001252e-16
+ loss of symmetry for r=3 and k=3
+error is  6.661338147750939e-16
+ loss of symmetry for r=4 and k=3
+error is  1.4475145210724932e-15
+ loss of symmetry for r=5 and k=3
+error is  7.932992677808767e-15
+ loss of symmetry for r=6 and k=3
+error is  2.6697711832939377e-14
+ loss of symmetry for r=7 and k=3
+error is  1.7885692926711272e-13
+ loss of symmetry for r=1 and k=4
+error is  6.661338147750939e-16
+ loss of symmetry for r=2 and k=4
+error is  4.440892098500626e-16
+ loss of symmetry for r=3 and k=4
+error is  1.3322676295501878e-15
+ loss of symmetry for r=4 and k=4
+error is  2.1094237467877974e-15
+ loss of symmetry for r=5 and k=4
+error is  6.492586857338789e-15
+ loss of symmetry for r=6 and k=4
+error is  3.564924931481059e-14
+ loss of symmetry for r=7 and k=4
+error is  1.603162047558726e-13
+ loss of symmetry for r=1 and k=5
+error is  4.440892098500626e-16
+ loss of symmetry for r=2 and k=5
+error is  8.881784197001252e-16
+ loss of symmetry for r=3 and k=5
+error is  1.7763568394002505e-15
+ loss of symmetry for r=4 and k=5
+error is  4.3204711547199106e-15
+ loss of symmetry for r=5 and k=5
+error is  1.7986631686426993e-14
+ loss of symmetry for r=6 and k=5
+error is  7.006357772587276e-14
+ loss of symmetry for r=7 and k=5
+error is  2.6851150704990566e-13
+ loss of symmetry for r=1 and k=6
+error is  8.881784197001252e-16
+ loss of symmetry for r=2 and k=6
+error is  1.2296468210463096e-15
+ loss of symmetry for r=3 and k=6
+error is  2.1094237467877974e-15
+ loss of symmetry for r=4 and k=6
+error is  6.957120813739431e-15
+ loss of symmetry for r=5 and k=6
+error is  1.9883344744309323e-14
+ loss of symmetry for r=6 and k=6
+error is  8.90624668610065e-14
+ loss of symmetry for r=7 and k=6
+error is  4.782526357532946e-13
+ loss of symmetry for r=1 and k=7
+error is  1.3322676295501878e-15
+ loss of symmetry for r=2 and k=7
+error is  1.7763568394002505e-15
+ loss of symmetry for r=3 and k=7
+error is  3.309108092374143e-15
+ loss of symmetry for r=4 and k=7
+error is  1.8183961641937604e-14
+ loss of symmetry for r=5 and k=7
+error is  3.508523083891705e-14
+ loss of symmetry for r=6 and k=7
+error is  1.1416702108547297e-13
+ loss of symmetry for r=7 and k=7
+error is  7.271109092347001e-13
+7.271109092347001e-13

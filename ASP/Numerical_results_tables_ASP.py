@@ -31,10 +31,10 @@ np.seterr('raise')
 #                                   Data
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-ps            = (6,) #(1, 2, 3, 4 , 5  , 6 , 7, 8, 9, 10)
-ks            = (7,) #(2, 3, 4,  5, 6)
+ps            = (1, 2, 3, 4 , 5  , 6)# , 7, 8, 9, 10)
+ks            = (2, 3, 4,  5, 6)
 ncells        = {2:"4", 3:"8", 4:"16", 5:"44", 6:"101", 7:"215", 8:"401", 9:"800", 10:"1586", 11:"3199", 12:"6354", 13:"12770", 14:"25497", 15:"50917", 16:"101741", 17:"203504", 18:"406760"}
-Taus          = [10**k for k in range(1,5)]
+Taus          = [10**k for k in range(-4,5)]
 
 # Right hand side and solution
 def f(x,y):
@@ -204,12 +204,12 @@ def main(k, p, tau):
         # Local element
         St=Stiff2d(Liste,r)
         Mt=mass2d(Liste,r)
-        #Ft=load2d(scd,Liste,r)
+        Ft=load2d(scd,Liste,r)
 
         local_ndof=r*(r+2)
         for j in range(local_ndof):
             glob_j,sign_j=local_to_global(nedges,T, tris_edges[i], i ,j,r)
-            #F[glob_j]+= sign_j * Ft[j]
+            F[glob_j]+= sign_j * Ft[j]
             for k in range(local_ndof):
                 glob_k,sign_k=local_to_global(nedges,T, tris_edges[i], i ,k,r)
                 S[glob_j][glob_k]+= sign_j * sign_k * St[j][k]
@@ -220,21 +220,21 @@ def main(k, p, tau):
     S=np.delete(S, I,1)
     M=np.delete(M, I,0)
     M=np.delete(M, I,1)
-    #F=np.delete(F, I,0)
+    F=np.delete(F, I,0)
 
     A=S+tau*M
     
     A= np.dot(B,A)
-    #F= np.dot(B,F)
+    F= np.dot(B,F)
     
     
-    '''num_iters = 0
+    num_iters = 0
     def callback(xk):
         nonlocal num_iters
         num_iters+=1
     
-    #X, status = cg(A, F, rtol=1e-6, callback=callback , maxiter=3000)
-    X, status = gmres(A, F, rtol=1e-6, callback=callback , maxiter=3000)
+    X, status = cg(A, F, rtol=1e-6, callback=callback , maxiter=3000)
+    #X, status = gmres(A, F, rtol=1e-6, callback=callback , maxiter=3000)
     te = time.time()
     
     if status == 0:
@@ -277,10 +277,10 @@ def main(k, p, tau):
 
     error_L2=np.sqrt(error_L2)
     error_Hcurl=np.sqrt(error_Hcurl)
-    error_energy=np.sqrt(error_energy)'''
+    error_energy=np.sqrt(error_energy)
 
-    #info={'err_l2_norm': error_L2, 'err_Hcurl_norm': error_Hcurl, 'err_energy':error_energy, 'cond_2': np.linalg.cond(A), 'niter': num_iters, 'success': success, 'CPU_time': te-tb}
-    info={ 'cond_2': np.linalg.cond(A)}
+    info={'err_l2_norm': error_L2, 'err_Hcurl_norm': error_Hcurl, 'err_energy':error_energy,  'niter': num_iters, 'success': success, 'CPU_time': te-tb}
+    #info={ 'cond_2': np.linalg.cond(A)}
 
     return info
 
@@ -299,12 +299,12 @@ def main_tables(tau):
     
             d[p,k] = info
 
-    #write_table(d, folder, kind ='niter')
-    #write_table(d, folder, kind ='CPU_time')
-    #write_table(d, folder, kind ='err_l2_norm')
-    write_table(d, folder, kind ='cond_2')
-    #write_table(d, folder, kind ='err_energy')
-    #write_table(d, folder, kind ='err_Hcurl_norm')
+    write_table(d, folder, kind ='niter')
+    write_table(d, folder, kind ='CPU_time')
+    write_table(d, folder, kind ='err_l2_norm')
+    #write_table(d, folder, kind ='cond_2')
+    write_table(d, folder, kind ='err_energy')
+    write_table(d, folder, kind ='err_Hcurl_norm')
 
 
 

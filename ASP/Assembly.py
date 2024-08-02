@@ -18,7 +18,7 @@ import matplotlib.pyplot as plt
 ##Binomial coeff, limited at 203
 ## created in the file Precompute.py
 
-Bin=np.load("Binomial coeff.npy")
+Bin=np.load("Binomial coeff.npy", allow_pickle=True)
 
 
 
