@@ -1,0 +1,1 @@
+Results computed before the correction of the loss of symmerty 

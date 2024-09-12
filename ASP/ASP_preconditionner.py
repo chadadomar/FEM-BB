@@ -245,6 +245,36 @@ def ASP_preconditioner(r,k,tau):
     
     return  B
 
+def TheK_d(r,k,tau):
+    #input:
+        # r : order of FE
+        # k : integer s.t the area of triangles does not exceed 1/2**k
+        # Tau : parameter
+    # Output:
+        # ASP preconditioner
+        
+    G=G_glob0(r,k)
+    P=Glob_Proj0(r,k)
+    
+    mesh_points,mesh_tris,mesh_edges,tris_edges=mesh(k)
+    ntris=len(mesh_tris)
+    nedges=len(mesh_edges)
+    Stiff,Mass=Glob_Stiff_Mass_H1_bis(r,k)
+    Scurl,Mcurl=Glob_Stiff_Mass_curl_bis(r,k)
+    A=Scurl+tau*Mcurl
+    
+    #H=block_diag(Stiff+Mass,Stiff+Mass)
+    #M=block_diag(Mass,Mass)
+    #Q= H + tau*M
+
+    aux=fast_positive_definite_inverse(Stiff+(1+tau)*Mass)
+    Q=block_diag(aux,aux)
+
+    B= P @ Q @ np.transpose(P)
+    B+= (1/tau) * G @ fast_positive_definite_inverse(Stiff) @ np.transpose(G)
+    
+    return  B
+
 def Test_Sym(r,k,tau):
     #input:
         # r : order of FE
@@ -266,28 +296,31 @@ def Test_Sym(r,k,tau):
     Q2=block_diag(aux,aux)
     return Q , Q2
 
-MaxB=0    
 
-for k in range(2,8):
-    for r in range(1,8):
-        B=ASP_preconditioner(r,k,1)
+def jacobi(A, b, x0=None,  max_iterations=1):
+    n = A.shape[0]
+    x = x0 if x0 is not None else np.zeros_like(b)
+    x_new = np.zeros_like(x)
 
-        
-        print( " loss of symmetry for r="+str(r)+" and k="+str(k))
-        m=np.max(np.abs(B- np.transpose(B)))
-        print("error is ",m)
-        if m>MaxB:
-            MaxB=m
-        
-        '''if np.allclose( I ,np.eye(n)) :
-            print("valid for r="+str(r)+" and k="+str(k))
-        else:
-            print( " loss of symmetry for r="+str(r)+" and k="+str(k))
-            m=np.max(np.abs(I- np.eye(n)))
-            print("error is ",m)
-            if m>MaxB:
-                MaxB=m'''
-        
-            
-print(MaxB)
+    # Iterate until convergence or max iterations
+    for iteration in range(max_iterations):
+        for i in range(n):
+            sum_ = np.dot(A[i, :i], x[:i]) + np.dot(A[i, i+1:], x[i+1:])
+            x_new[i] = (b[i] - sum_) / A[i, i]
+        x = x_new.copy()
+    return x_new
 
+
+def linOpB(A,b,K_d,x0=None,v1=1,vasp=3):
+    
+    n = A.shape[0]
+    x = x0 if x0 is not None else np.zeros_like(b)
+    x_new = np.zeros_like(x)
+    k=0
+    while k <= vasp:
+        x_new= jacobi(A, b, x0=None,  max_iterations=v1)
+        d=b-A@x_new
+        x_c=K_d@d
+        x_new+=x_c
+        k+=1
+    return x_new

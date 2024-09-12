@@ -1,3 +1,10 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Thu Sep 12 14:31:15 2024
+
+@author: chada
+"""
+
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
@@ -17,7 +24,7 @@ import time
 import os
 
 from numpy import linalg as la
-from scipy.sparse.linalg import cg, gmres, bicgstab, minres
+from scipy.sparse.linalg import cg, gmres, bicgstab, minres, LinearOperator
 from tabulate import tabulate
 
 
@@ -32,7 +39,7 @@ np.seterr('raise')
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 ps            = (1, 2, 3, 4) # , 5  , 6 , 7, 8, 9, 10)
-ks            = (10,) #(2, 3, 4,  5, 6, 7)
+ks            = (2,)# 3, 4,  5, 6, 7)
 ncells        = {2:"4", 3:"8", 4:"16", 5:"44", 6:"101", 7:"215", 8:"401", 9:"800", 10:"1586", 11:"3199", 12:"6354", 13:"12770", 14:"25497", 15:"50917", 16:"101741", 17:"203504", 18:"406760"}
 Taus          = [10**k for k in range(-4,5)]
 
@@ -89,7 +96,7 @@ def create_folder(tau):
     tau="tau "+str(tau)
 
 
-    folder = 'numerical_results_ASP_GMRES/{tau}'.format(tau=tau)
+    folder = 'numerical_results_ASP_GMRES_Bis/{tau}'.format(tau=tau)
 
     mkdir_p(os.path.join(folder, 'txt'))
     mkdir_p(os.path.join(folder, 'tex'))
@@ -180,7 +187,6 @@ def main(k, p, tau):
     S=np.zeros((ndof,ndof))
     F=np.zeros(ndof)
     
-    B=ASP_preconditioner(p,k,tau)
 
     #def rh(x,y):
         #return curlcurluh(x,y)+ tau* uh(x,y)
@@ -223,18 +229,20 @@ def main(k, p, tau):
     F=np.delete(F, I,0)
 
     A=S+tau*M
+    taille=len(A)
     
-    A= np.dot(B,A)
-    F= np.dot(B,F)
-    
+    K_d=TheK_d(r,k,tau)
+    def LinOperator(x):
+        b=A@x
+        return linOpB(A,b,K_d,x0=None,v1=1,vasp=3)
     
     num_iters = 0
     def callback(xk):
         nonlocal num_iters
         num_iters+=1
-    
+    LinOperator=LinearOperator((taille,taille), matvec=LinOperator)
     #X, status = cg(A, F, rtol=1e-6, callback=callback , maxiter=3000)
-    X, status = gmres(A, F, rtol=1e-6, callback=callback , maxiter=3000)
+    X, status = gmres(LinOperator, F, rtol=1e-6, callback=callback , maxiter=3000)
     te = time.time()
     
     if status == 0:
