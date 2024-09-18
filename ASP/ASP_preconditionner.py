@@ -223,7 +223,6 @@ def ASP_preconditioner(r,k,tau):
         
     G=G_glob0(r,k)
     P=Glob_Proj0(r,k)
-    
     mesh_points,mesh_tris,mesh_edges,tris_edges=mesh(k)
     ntris=len(mesh_tris)
     nedges=len(mesh_edges)
@@ -242,7 +241,6 @@ def ASP_preconditioner(r,k,tau):
     B= S
     B+= P @ Q @ np.transpose(P)
     B+= (1/tau) * G @ fast_positive_definite_inverse(Stiff) @ np.transpose(G)
-    
     return  B
 
 def TheK_d(r,k,tau):
@@ -308,19 +306,26 @@ def jacobi(A, b, x0=None,  max_iterations=1):
             sum_ = np.dot(A[i, :i], x[:i]) + np.dot(A[i, i+1:], x[i+1:])
             x_new[i] = (b[i] - sum_) / A[i, i]
         x = x_new.copy()
-    return x_new
+    return x
 
 
 def linOpB(A,b,K_d,x0=None,v1=1,vasp=3):
     
     n = A.shape[0]
     x = x0 if x0 is not None else np.zeros_like(b)
-    x_new = np.zeros_like(x)
-    k=0
-    while k <= vasp:
-        x_new= jacobi(A, b, x0=None,  max_iterations=v1)
-        d=b-A@x_new
-        x_c=K_d@d
-        x_new+=x_c
-        k+=1
-    return x_new
+    kstep=0
+    while kstep <= vasp:
+        x= jacobi(A, b, x0=x,  max_iterations=v1)
+        d= b - A @ x
+        x_c=K_d @ d
+        x+=x_c
+        kstep+=1
+    return x
+
+'''Mcurl,Scurl=Glob_Stiff_Mass_curl_bis(2,2)
+A=Scurl+Mcurl
+b=np.random.rand(len(A))
+K_d=TheK_d(2,2,0.0001)
+print(linOpB(A,b,K_d,x0=None,v1=1,vasp=3))'''
+
+

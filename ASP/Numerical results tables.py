@@ -30,12 +30,9 @@ np.seterr('raise')
 #                                   Data
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-<<<<<<< HEAD
-ps            = (1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
-ks            = (2, 3, 4, 5, 6)
-=======
-ps            = (1,2,3,4,5,6,7,8)
-ks            = (7,8) #9,10,11,12,13
+
+ps            = (1, 2, 3, 4)
+ks            = (2, 3, 4, 5)
 ncells        = {2:"4", 3:"8", 4:"16", 5:"44", 6:"101", 7:"215", 8:"401", 9:"800", 10:"1586", 11:"3199", 12:"6354", 13:"12770", 14:"25497", 15:"50917", 16:"101741", 17:"203504", 18:"406760"}
 Taus          = [10**k for k in range(-4,5)]
 
@@ -210,10 +207,10 @@ def main(k, p, tau):
         for j in range(local_ndof):
             glob_j,sign_j=local_to_global(nedges,T, tris_edges[i], i ,j,r)
             F[glob_j]+= sign_j * Ft[j]
-            for k in range(local_ndof):
-                glob_k,sign_k=local_to_global(nedges,T, tris_edges[i], i ,k,r)
-                S[glob_j][glob_k]+= sign_j * sign_k * St[j][k]
-                M[glob_j][glob_k]+= sign_j * sign_k* Mt[j][k]
+            for kappa in range(local_ndof):
+                glob_k,sign_k=local_to_global(nedges,T, tris_edges[i], i ,kappa,r)
+                S[glob_j][glob_k]+= sign_j * sign_k * St[j][kappa]
+                M[glob_j][glob_k]+= sign_j * sign_k* Mt[j][kappa]
 
     I=IndexToDelete(mesh_edges,mesh_points,r)
     S=np.delete(S, I,0)
@@ -307,10 +304,10 @@ def main_tables(tau,p):
 #                               Run tests
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-'''if __name__ == '__main__':
+if __name__ == '__main__':
     for tau in Taus:
         for p in ps:
-            main_tables(tau = tau, p=p)'''
+            main_tables(tau = tau, p=p)
 
 
 

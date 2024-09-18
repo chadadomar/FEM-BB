@@ -39,7 +39,7 @@ np.seterr('raise')
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 ps            = (1, 2, 3, 4) # , 5  , 6 , 7, 8, 9, 10)
-ks            = (2,)# 3, 4,  5, 6, 7)
+ks            = (2, 3, 4,  5, 6) #, 7)
 ncells        = {2:"4", 3:"8", 4:"16", 5:"44", 6:"101", 7:"215", 8:"401", 9:"800", 10:"1586", 11:"3199", 12:"6354", 13:"12770", 14:"25497", 15:"50917", 16:"101741", 17:"203504", 18:"406760"}
 Taus          = [10**k for k in range(-4,5)]
 
@@ -176,17 +176,14 @@ def main(k, p, tau):
           .format(tau = tau, p=p,k=k))
     
     tb = time.time()
-
     mesh_points,mesh_tris,mesh_edges,tris_edges=mesh(k)
     ntris=len(mesh_tris)
     nedges=len(mesh_edges)
-
 
     ndof=nbr_globDof(nedges,ntris,r)
     M=np.zeros((ndof,ndof))
     S=np.zeros((ndof,ndof))
     F=np.zeros(ndof)
-    
 
     #def rh(x,y):
         #return curlcurluh(x,y)+ tau* uh(x,y)
@@ -216,10 +213,11 @@ def main(k, p, tau):
         for j in range(local_ndof):
             glob_j,sign_j=local_to_global(nedges,T, tris_edges[i], i ,j,r)
             F[glob_j]+= sign_j * Ft[j]
-            for k in range(local_ndof):
-                glob_k,sign_k=local_to_global(nedges,T, tris_edges[i], i ,k,r)
-                S[glob_j][glob_k]+= sign_j * sign_k * St[j][k]
-                M[glob_j][glob_k]+= sign_j * sign_k* Mt[j][k]
+            for kappa in range(local_ndof):
+                glob_k,sign_k=local_to_global(nedges,T, tris_edges[i], i ,kappa,r)
+                S[glob_j][glob_k]+= sign_j * sign_k * St[j][kappa]
+                M[glob_j][glob_k]+= sign_j * sign_k* Mt[j][kappa]
+    
 
     I=IndexToDelete(mesh_edges,mesh_points,r)
     S=np.delete(S, I,0)
@@ -227,9 +225,10 @@ def main(k, p, tau):
     M=np.delete(M, I,0)
     M=np.delete(M, I,1)
     F=np.delete(F, I,0)
-
+    B=ASP_preconditioner(r,k,tau)
     A=S+tau*M
-    taille=len(A)
+    shape=A.shape
+    
     
     K_d=TheK_d(r,k,tau)
     def LinOperator(x):
@@ -240,11 +239,10 @@ def main(k, p, tau):
     def callback(xk):
         nonlocal num_iters
         num_iters+=1
-    LinOperator=LinearOperator((taille,taille), matvec=LinOperator)
+    LinOperator=LinearOperator( shape ,  matvec=LinOperator)
     #X, status = cg(A, F, rtol=1e-6, callback=callback , maxiter=3000)
-    X, status = gmres(LinOperator, F, rtol=1e-6, callback=callback , maxiter=3000)
+    X, status = gmres(LinOperator, B@F, rtol=1e-6, callback=callback , maxiter=3000)
     te = time.time()
-    
     if status == 0:
         success = True
     else:
